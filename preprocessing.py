@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import librosa
 import torch
@@ -55,12 +57,17 @@ def load_spec_array(path):
     ls = glob(f'{path}/*.npy')
     adata = []
     specs=np.empty(len(ls), dtype=object)
+    ids: [int] = []
+    names: [str] = []
     for i in range(len(ls)):
+        name = os.path.splitext(os.path.basename(ls[i]))[0]
+        id = int(name.split('_')[0])
+        name = '_'.join(name.split('_')[2:])
         x = np.load(ls[i])
         x = np.array(x, dtype=np.float32)
         specs[i] = np.expand_dims(x, -1)
 
-    return specs
+    return ids, names, specs
 
 """ Generate spectrograms from waveform array """
 def convert_audio_array_to_spec_array(data):
