@@ -55,6 +55,16 @@ def tf_serialize_example(id: int, name: str, original: np.ndarray, remix: np.nda
     tf.string)      # The return type is `tf.string`.
   return tf.reshape(tf_string, ()) # The result is a scalar.
 
+class GGDataset:
+    def __init__(self, tfrecordfile):
+        self.tfrecordfile = tfrecordfile
+        self.ds = tf.data.TFRecordDataset(tfrecordfile)
+        self.iter = iter(self.ds)
+
+    def next(self):
+       return next(self.iter)
+
+
 
 if __name__ == '__main__':
     filename = 'spectrals_train.tfrecord'
@@ -65,5 +75,10 @@ if __name__ == '__main__':
     print(f2)
     print(f3)
     serialized_ds = ft_ds.map(tf_serialize_example)
-    writer = tf.data.experimental.TFRecordWriter(filename)
+    writer = tf.io.TFRecordWriter(filename)
     writer.write(serialized_ds)
+    #dataset = tf.data.TFRecordDataset(filename) # . all ops to be done here
+    #raw_example = next(iter(dataset))
+    #parsed = tf.train.Example.FromString(raw_example.numpy())
+    #print(parsed.features.feature['remix'])
+
