@@ -1,5 +1,6 @@
 import os
 
+from pathlib import Path
 import numpy as np
 import librosa
 import torch
@@ -51,6 +52,35 @@ def load_audio_array(path):
         return np.array(adata, dtype=object)
     else:
         return np.array(adata, dtype=np.float32)
+
+""" Read spectrograms from hard drive remix and original combined"""
+def load_spec_o_r_arrays(spec_o_path, spec_r_path):
+    filenames = glob(f'{spec_o_path}/*.npy')
+    o_specs = np.empty(len(filenames), dtype=object)
+    r_specs = np.empty(len(filenames), dtype=object)
+    ids: [int] = [None] * len(filenames)
+    names: [str] = [None] * len(filenames)
+
+    for i in range(len(filenames)):
+        name = os.path.splitext(os.path.basename(filenames[i]))
+        name = name.split('_')
+        id = int(name[0])
+        name = '_'.join(name[2:])
+
+        rname = os.path.basename(filenames[i]).split('_')
+        rname = str(id) + '_r_' + '_'.join(rname[2:])
+
+        o_spec = np.load(filenames[i])
+        o_spec = np.array(o_spec, dtype=np.float32)
+        r_spec = np.load(spec_r_path + rname + '.npy')
+        r_spec = np.array(r_spec, dtype=np.float32)
+        ids[i] = id
+        names[i] = name
+        o_specs[i] = np.expand_dims(o_spec, -1)
+        r_specs[i] = np.expand_dims(r_spec, -1)
+
+    return ids, names, o_specs, r_specs
+
 
 """ Read spectrograms from hard drive """
 def load_spec_array(path):

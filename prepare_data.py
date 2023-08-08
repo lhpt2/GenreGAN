@@ -2,9 +2,9 @@ import tensorflow as tf
 import numpy as np
 import IPython.display as display
 
-from preprocessing import load_audio_array, split_equal_size, load_spec_array
+from preprocessing import split_equal_size, load_spec_o_r_arrays
 
-train_o = load_spec_array('../spec_train_o')
+#train_o = load_spec_array('../spec_train_o')
 #train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
 
 #train_r = load_spec_array('../spec_train_r')
@@ -58,8 +58,4 @@ def tf_serialize_example(id: int, name: str, original: np.ndarray, remix: np.nda
 
 if __name__ == '__main__':
     filename = 'spectrals_train.tfrecord'
-    toids, tonames, train_o = load_spec_array('../spec_train_o')
-    _, _, train_r = load_spec_array('../spec_train_r')
-
-
-
+    ids, names, train_o, train_r = load_spec_o_r_arrays('../spec_train_o', '../spec_train_r')
