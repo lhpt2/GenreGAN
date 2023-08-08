@@ -149,9 +149,9 @@ def concat_specarray(specarray: np.ndarray):
 
 def melspecfunc(waveform):
   specgram = specfunc(waveform)
-  print(specgram.shape)
+  #print(specgram.shape)
   mel_specgram = melfunc(specgram)
-  print(mel_specgram.shape)
+  #print(mel_specgram.shape)
   return mel_specgram
 
 def spectral_convergence(input, target):
