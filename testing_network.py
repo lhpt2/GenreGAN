@@ -9,36 +9,39 @@ from constants import sr, shape, log
 from preprocessing import db_spec_to_wave, concat_specarray
 from architecture import get_networks
 
+def save_spec_to_wv(spec, filepath='./test.wav'):
+   wv = db_spec_to_wave(spec)
+   sf.write(filepath, wv, sr)
+
 """ Converting from source Spectrogram to target Spectrogram """
 def use_generator(spec, gen, path='./', show=False):
-   specarr = chopspec(spec)
-   print(specarr.shape)
-   a = specarr
+   orig_spec = chopspec(spec)
+
    print('Generating...')
-   ab = gen(a, training=False)
+   gen_specarr = gen(orig_spec, training=False)
+
    print('Assembling and Converting...')
-   ab = specass(ab,spec)
+   final_genspec = specass(gen_specarr,spec)
+
    print('Saving...')
-   abwv = db_spec_to_wave(ab)
-   sf.write(path+'/AB.wav', abwv, sr)
-   #print('Assembling and Converting...')
-   #a = specass(a,spec)
-   #print('Saving...')
-   #awv = db_spec_to_wave(a)
-   #sf.write(pathfin+'/A.wav', awv, sr)
+   save_spec_to_wv(final_genspec, filepath=path + '/Generated.wav')
+   print('Saved WAV!')
+
+   print('Saving original...')
+   save_spec_to_wv(spec, filepath=path + '/Orig.wav')
    print('Saved WAV!')
    #IPython.display.display(IPython.display.Audio(np.squeeze(abwv), rate=sr))
    #IPython.display.display(IPython.display.Audio(np.squeeze(awv), rate=sr))
    if show:
       fig, axs = plt.subplots(ncols=2)
-      axs[0].imshow(np.flip(a, -2), cmap=None)
+      axs[0].imshow(np.flip(spec, -2), cmap=None)
       axs[0].axis('off')
       axs[0].set_title('Source')
-      axs[1].imshow(np.flip(ab, -2), cmap=None)
+      axs[1].imshow(np.flip(final_genspec, -2), cmap=None)
       axs[1].axis('off')
       axs[1].set_title('Generated')
       plt.show()
-   return abwv
+   return final_genspec
 
 """ ################# internal functions (not for direct use) ###################"""
 
@@ -139,7 +142,9 @@ def secs_to_bins(secs, sr=22050, hop=192):
    return math.ceil(secs * sr / hop)
 
 if __name__ == '__main__':
+   starttime=0
+   snippetlen=10
    gen, critic, siam, [opt_gen, opt_disc] = get_networks(shape, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')
-   spec = np.load('../spec_val_o/155_o_Karol_G_Ocean.npy')
-   spec = spec[:, secs_to_bins(100):secs_to_bins(110)]
+   spec = np.load('../spec_train_o/001_o_Aiono_and_Diamond_White_We_dont_talk_anymore.npy')
+   spec = spec[:, secs_to_bins(starttime):secs_to_bins(starttime + snippetlen)]
    use_generator(spec, gen)
