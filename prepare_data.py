@@ -58,4 +58,12 @@ def tf_serialize_example(id: int, name: str, original: np.ndarray, remix: np.nda
 
 if __name__ == '__main__':
     filename = 'spectrals_train.tfrecord'
-    ids, names, train_o, train_r = load_spec_o_r_arrays('../spec_train_o', '../spec_train_r')
+    ft_ds = tf.data.Dataset.from_tensor_slices(load_spec_o_r_arrays('../spec_train_o', '../spec_train_r'))
+    f0, f1, f2, f3 = ft_ds.take(1)
+    print(f0)
+    print(f1)
+    print(f2)
+    print(f3)
+    serialized_ds = ft_ds.map(tf_serialize_example)
+    writer = tf.data.experimental.TFRecordWriter(filename)
+    writer.write(serialized_ds)
