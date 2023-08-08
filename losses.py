@@ -84,3 +84,32 @@ def L_s(beta: float, gamma:float, l_travel, l_s_margin: float):
 
 def L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, l_travel: float):
     return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * l_travel
+
+""" 
+loss_g -> L_g_adv 
+loss_m -> loss_travel(siam_orig1, siam_gen_orig1, siam_orig3, siam_gen_orig3) + loss_siamese(siam_orig1, siam_orig3) 
+loss_id -> (mae(remix1, gen_remix1) + mae(remix2, gen_remix2) + mae(remix3, gen_remix3)) / 3.
+loss_dr = loss_d_remix(critic_remix)
+loss_df = loss_d_gen_orig(critic_gen_orig)
+
+GEN_loss = loss_g + 10. * loss_m[travel+siamese) + 0.5 * loss_id
+DISC_loss = (loss_dr + loss_df) / 2.
+
+"""
+
+"""
+
+gen_adv_l = -mean_a(D(G(a)))
+gen_id_l = mean_b(l2_squared(G(b) - b))
+
+travel_l = mean_a(cos_sim(t12, t_12) + l2_squared(t12-t_12))
+t12 = S(a__i) - S(a__j)
+t_12 = S(G(a__i)) - S(G(a__j))
+
+siam_margin_l = mean_a(max(0, (delta - l2_norm(t12))))
+
+DISC_loss = -mean_b(min((0, -1+D(b))) - mean_a(min(0, -1-D(G(a))))
+GEN_loss = gen_adv_l + alpha * gen_id_l + beta * travel_l
+SIAM_loss = beta * travel_l + gamma * siam_margin_l 
+
+"""
