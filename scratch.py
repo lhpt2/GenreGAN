@@ -32,6 +32,9 @@ Dateien mit zugehoerigem Dateinamen einlesen
 def convert_folder(srcpath, destpath):
    ls = glob(f'{srcpath}/*.wav')
 
+   if not os.path.exists(destpath):
+      os.mkdir(destpath)
+
    for file in ls:
       filename = os.path.splitext(basename(file))[0]
       print(filename)
@@ -59,8 +62,6 @@ def convert_file(srcfile, destpath):
    # else:
    #    return np.array(adata, dtype=np.float32)
 
-#convert_folder("r_mono", "specremix")
-path="../backup_datensatz_22khz/mono/"
 
 #print(f"{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')}")
 
@@ -104,3 +105,15 @@ path="../backup_datensatz_22khz/mono/"
 #plt.show()
 
 #abwv = use_generator(speca, name='FILENAME1', path='../content/')           #Convert and save wav
+#path="../backup_datensatz_22khz/mono/"
+
+srcpath="../../datensatz_22khz/mono"
+destpath="../../datensatz_22khz/specs"
+
+#convert_folder(f"{srcpath}/traindata_o", f"{destpath}/spectrain_o")
+#convert_folder(f"{srcpath}/traindata_r", f"{destpath}/spectrain_r")
+convert_folder(f"{srcpath}/valdata_o", f"{destpath}/specval_o")
+# convert_folder(f"{srcpath}/valdata_r", f"{destpath}/specval_r")
+# convert_folder(f"{srcpath}/testdata_o", f"{destpath}/spectest_o")
+# convert_folder(f"{srcpath}/testdata_r", f"{destpath}/spectest_r")
+
