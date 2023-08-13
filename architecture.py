@@ -90,7 +90,7 @@ def build_critic(input_shape):
   g2 = conv2d(g1, 512, kernel_size=(1,9), strides=(1,2), bnorm=False)
   g3 = conv2d(g2, 512, kernel_size=(1,7), strides=(1,2), bnorm=False)
   g4 = Flatten()(g3)
-  g4 = DenseSN(1, kernel_initializer=init)(g4)
+  g4 = DenseSN(1, kernel_initializer=init)(g4) #spectral normalization layer
   return Model(inp, g4, name='C')
 
 """ Load past models from path to resume training or test """
@@ -122,5 +122,18 @@ def get_networks(shape, load_model=False, path=None):
   opt_disc = Adam(0.0001, 0.5)
 
   return gen,critic,siam, [opt_gen,opt_disc]
+
+def get_networks2(shape, load_model=False, path=None):
+  if not load_model:
+    gen,critic,siam = build()
+  else:
+    gen,critic,siam = load(path)
+  print('Built networks')
+
+  opt_gen = Adam(0.0001, 0.5)
+  opt_disc = Adam(0.0001, 0.5)
+  opt_siam = Adam(0.0001, 0.5)
+
+  return gen,critic,siam, [opt_gen,opt_disc, opt_siam]
 
 

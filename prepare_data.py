@@ -2,7 +2,10 @@ import tensorflow as tf
 import numpy as np
 import IPython.display as display
 
-from preprocessing import split_equal_size, load_spec_o_r_arrays
+from constants import secs_to_bins, bins_to_secs
+from preprocessing import split_equal_size, load_spec_o_r_arrays, load_spec_array, enlarge_to_longest_spec, shorten_to_shortest_spec
+from testing_network import save_spec_to_wv
+
 
 #train_o = load_spec_array('../spec_train_o')
 #train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
@@ -24,7 +27,7 @@ from preprocessing import split_equal_size, load_spec_o_r_arrays
 
 def _tensor_feature(tensor):
     serial_tensor = tf.io.serialize_tensor(tensor)
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[serial_tensor.numpy()]))
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[serial_tensor]))
 
 def _int64_feature(value):
   """Returns an int64_list from a bool / enum / int / uint."""
@@ -40,7 +43,7 @@ def _string_feature(value):
 def serialize_example(id: int, name: str, original: np.ndarray, remix: np.ndarray):
     feature = {
         'id': _int64_feature(id),
-        'name': _string_feature(name.encode()),
+        'name': _string_feature(name),
         'original': _tensor_feature(original),
         'remix': _tensor_feature(remix),
     }
@@ -55,15 +58,6 @@ def tf_serialize_example(id: int, name: str, original: np.ndarray, remix: np.nda
     tf.string)      # The return type is `tf.string`.
   return tf.reshape(tf_string, ()) # The result is a scalar.
 
-class GGDataset:
-    def __init__(self, tfrecordfile):
-        self.tfrecordfile = tfrecordfile
-        self.ds = tf.data.TFRecordDataset(tfrecordfile)
-        self.iter = iter(self.ds)
-
-    def next(self):
-       return next(self.iter)
-
 def _parse_function(example_proto):
     # Create a description of the features.
     feature_description = {
@@ -77,17 +71,43 @@ def _parse_function(example_proto):
 
 if __name__ == '__main__':
     filename = 'spectrals_train.tfrecord'
-    ft_ds = tf.data.Dataset.from_tensor_slices(load_spec_o_r_arrays('../spec_train_o', '../spec_train_r'))
-    f0, f1, f2, f3 = ft_ds.take(1)
-    print(f0)
-    print(f1)
-    print(f2)
-    print(f3)
-    serialized_ds = ft_ds.map(tf_serialize_example)
-    writer = tf.io.TFRecordWriter(filename)
-    writer.write(serialized_ds)
+    print(secs_to_bins(5))
+    print(secs_to_bins(1))
+    print(bins_to_secs(72))
+    exit()
+    ids, names, spec_train_o, spec_train_r = load_spec_o_r_arrays('../spec_train_o', '../spec_train_r')
+
+    ###### PROBLEM: DIE DATEN BZW SONGS MUESSEN GLEICH LANG SEIN, DAMIT SIE IN EINEN TENSOR PASSEN
+
+    #spec_train_o = split_equal_size(spec_train_o)
+    #spec_train_r = split_equal_size(spec_train_r)
+    #spec_train_o = enlarge_to_longest_spec(spec_train_o)
+    #spec_train_r = enlarge_to_longest_spec(spec_train_r)
+    spec_train_o = shorten_to_shortest_spec(spec_train_o)
+    spec_train_r = shorten_to_shortest_spec(spec_train_r)
+
+    ds = tf.data.Dataset.from_tensor_slices((ids, names, spec_train_o, spec_train_r))
+    for f0, f1, f2, f3 in ds.take(1):
+        print(int(f0))
+        print(f1.numpy().decode())
+        print(f2.shape)
+        print(f3.shape)
+
+    #s = tf.io.serialize_tensor(spec_train_o[0])
+    #print(type(s))
+
+
+    #id_ds = tf.data.Dataset.from_tensor_slices(ids)
+    #names_ds = tf.data.Dataset.from_tensor_slices(names)
+    #ft_ds = tf.data.Dataset.from_tensor_slices((ids, names, spec_train_o, spec_train_r))
+    #serialized_ds = ft_ds.map(tf_serialize_example)
+    #writer = tf.data.experimental.TFRecordWriter(filename)
+    #writer = tf.io.TFRecordWriter(filename)
+    #writer.write(serialized_ds)
     #dataset = tf.data.TFRecordDataset(filename) # . all ops to be done here
     #raw_example = next(iter(dataset))
     #parsed = tf.train.Example.FromString(raw_example.numpy())
-    #print(parsed.features.feature['remix'])
-
+    #print(parsed.features.feature['name'].bytes_list.value)
+    #rr = tf.io.parse_tensor(parsed.features.feature['remix'].bytes_list.value, tf.float32)
+    #remix = tf.io.parse_tensor(rr, tf.float32)
+    #save_spec_to_wv(remix, './remix.wav')

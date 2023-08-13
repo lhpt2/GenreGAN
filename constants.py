@@ -1,4 +1,5 @@
 import time
+import numpy as np
 
 #Hyperparameters
 
@@ -22,3 +23,9 @@ def log(msg: str, end="\n"):
     if end == "\n":
         msg = msg + "\n"
     logfile.write(msg)
+
+def bins_to_secs(bins, sr=22050, hop=192):
+    return bins * hop // sr
+
+def secs_to_bins(secs, sr=22050, hop=192):
+    return int(np.ceil(secs * sr / hop))

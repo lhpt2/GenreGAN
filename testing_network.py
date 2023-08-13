@@ -1,11 +1,9 @@
-import math
-
 import soundfile as sf
 import os, datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from constants import sr, shape, log
+from constants import sr, shape, log, secs_to_bins, bins_to_secs
 from preprocessing import db_spec_to_wave, concat_specarray
 from architecture import get_networks
 
@@ -94,7 +92,7 @@ def save_test_image_full(path, gen, aspec):
    #plt.show()
 
 """ Save in training loop """
-def save_end(epoch,gloss,closs,mloss, gen, critic, siam, aspec, n_save=3,save_path='./'):                 #use custom save_path (i.e. Drive '../content/drive/My Drive/')
+def save_end(epoch, gloss, closs, mloss, gen, critic, siam, aspec, n_save=3, save_path='./'):                 #use custom save_path (i.e. Drive '../content/drive/My Drive/')
    if epoch % n_save == 0:
       log(f'Saving epoch {epoch}...')
       #path = f'{save_path}/MELGANVC-{str(gloss)[:9]}-{str(closs)[:9]}-{str(mloss)[:9]}'
@@ -106,8 +104,8 @@ def save_end(epoch,gloss,closs,mloss, gen, critic, siam, aspec, n_save=3,save_pa
       save_test_image_full(path, gen, aspec)
 
 """ Assembling generated Spectrogram chunks into final Spectrogram """
-def specass(a,spec):
-   first_handled=False
+def specass(a, spec):
+   first_handled = False
    con = np.array([])
    nim = a.shape[0]
    for i in range(nim-1):
@@ -115,7 +113,7 @@ def specass(a,spec):
       im = np.squeeze(im)
       if not first_handled:
          con=im
-         first_handled=True
+         first_handled = True
       else:
          con = np.concatenate((con,im), axis=1)
    diff = spec.shape[1]-(nim*shape)
@@ -135,16 +133,14 @@ def chopspec(spec):
    dsa.append(imlast)
    return np.array(dsa, dtype=np.float32)
 
-def bins_to_secs(bins, sr=22050, hop=192):
-   return bins * hop // sr
 
-def secs_to_bins(secs, sr=22050, hop=192):
-   return math.ceil(secs * sr / hop)
 
 if __name__ == '__main__':
    starttime=0
    snippetlen=10
    gen, critic, siam, [opt_gen, opt_disc] = get_networks(shape, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')
    spec = np.load('../spec_train_o/001_o_Aiono_and_Diamond_White_We_dont_talk_anymore.npy')
-   spec = spec[:, secs_to_bins(starttime):secs_to_bins(starttime + snippetlen)]
+   start: int = secs_to_bins(starttime)
+   end: int = secs_to_bins(starttime + snippetlen)
+   spec = spec[:, start:end]
    use_generator(spec, gen)

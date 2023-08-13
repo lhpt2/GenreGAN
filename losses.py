@@ -48,36 +48,36 @@ def L_travel(s_src1, s_src2, s_g_src1, s_g_src2):
 
 def loss_siamese(siam_orig1, siam_orig3):
     logits = tf.sqrt(tf.reduce_sum((siam_orig1 - siam_orig3) ** 2, axis=-1, keepdims=True))
-    return tf.reduce_mean(tf.square(tf.maximum((delta - logits), 0)))
+    return tf.reduce_mean(tf.square(tf.maximum((delta - logits), 0.0)))
 
 def L_s_margin(delta: float, src1, src2, s_src1, s_src2):
     t12 = s_src1 - s_src2
-    return tf.reduce_mean(tf.maximum(0, delta - l2_norm(t12)))
+    return tf.reduce_mean(tf.maximum(0.0, delta - l2_norm(t12)))
 # finished
 
 
 
-def loss_d_gen_orig(gen_orig):
-    return tf.reduce_mean(tf.maximum(1 + gen_orig, 0))
+def loss_d_g_src(d_g_src):
+    return tf.reduce_mean(tf.maximum(1 + d_g_src, 0))
 
-def loss_d_remix(remix):
-    return tf.reduce_mean(tf.maximum(1 - remix, 0))
+def loss_d_target(d_target):
+    return tf.reduce_mean(tf.maximum(1 - d_target, 0))
 
 def L_g_adv(d_g_src):
     return -tf.reduce_mean(d_g_src)
 
-# eager calc losses
+# all param losses
 
-def _L_s(beta: float, gamma: float, delta: float, src1, src2, s_src1, s_src2, s_g_src1, s_g_src2):
+def L_s_full(beta: float, gamma: float, delta: float, src1, src2, s_src1, s_src2, s_g_src1, s_g_src2):
     return beta * L_travel(s_src1, s_src2, s_g_src1, s_g_src2) + gamma * L_s_margin(delta, src1, src2, s_src1, s_src2)
 
-def _L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s_g_src1, s_g_src2):
+def L_g_full(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s_g_src1, s_g_src2):
     return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * L_travel(s_src1, s_src2, s_g_src1, s_g_src2)
 
 # final losses
 
 def L_d(d_target, d_g_source):
-    return -tf.reduce_mean(tf.minimum(0, -1 + d_target)) - tf.reduce_mean(tf.minimum(0, -1 - d_g_source))
+    return -tf.reduce_mean(tf.minimum(0.0, -1 + d_target)) - tf.reduce_mean(tf.minimum(0.0, -1 - d_g_source))
 
 def L_s(beta: float, gamma:float, l_travel, l_s_margin: float):
     return beta * l_travel + gamma * l_s_margin
@@ -85,15 +85,18 @@ def L_s(beta: float, gamma:float, l_travel, l_s_margin: float):
 def L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, l_travel: float):
     return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * l_travel
 
+def L_g_noID(beta: float, d_g_src, l_travel: float):
+    return L_g_adv(d_g_src) + beta * l_travel
+
 """ 
+Losses code
+
 loss_g -> L_g_adv 
 loss_m -> loss_travel(siam_orig1, siam_gen_orig1, siam_orig3, siam_gen_orig3) + loss_siamese(siam_orig1, siam_orig3) 
 loss_id -> (mae(remix1, gen_remix1) + mae(remix2, gen_remix2) + mae(remix3, gen_remix3)) / 3.
-loss_dr = loss_d_remix(critic_remix)
-loss_df = loss_d_gen_orig(critic_gen_orig)
 
-GEN_loss = loss_g + 10. * loss_m[travel+siamese) + 0.5 * loss_id
-DISC_loss = (loss_dr + loss_df) / 2.
+GEN_loss = loss_g (OK) + 10. * loss_m[travel+siamese] + 0.5 * loss_id
+DISC_loss = (loss_dr + loss_df) / 2. ==> OK
 
 """
 

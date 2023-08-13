@@ -11,6 +11,7 @@ from torchaudio.transforms import Spectrogram, MelScale
 from glob import glob
 
 from constants import *
+from constants import secs_to_bins
 
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
@@ -43,9 +44,7 @@ def load_audio_array(path):
     adata = []
     for i in range(len(ls)):
         x, _ = tf.audio.decode_wav(tf.io.read_file(ls[i]), 1)
-        print(x.shape)
         x = np.array(x, dtype=np.float32)
-        print(x.shape)
         adata.append(x)
 
     if len(adata) > 1:
@@ -62,24 +61,24 @@ def load_spec_o_r_arrays(spec_o_path, spec_r_path):
     names: [str] = [None] * len(filenames)
 
     for i in range(len(filenames)):
-        name = os.path.splitext(os.path.basename(filenames[i]))
+        name = os.path.splitext(os.path.basename(filenames[i]))[0]
         name = name.split('_')
-        id = int(name[0])
+        idstr = name[0]
+        id = int(idstr)
         name = '_'.join(name[2:])
 
         rname = os.path.basename(filenames[i]).split('_')
-        rname = str(id) + '_r_' + '_'.join(rname[2:])
+        rname = idstr + '_r_' + '_'.join(rname[2:])
 
         o_spec = np.load(filenames[i])
-        o_spec = np.array(o_spec, dtype=np.float32)
-        r_spec = np.load(spec_r_path + rname + '.npy')
-        r_spec = np.array(r_spec, dtype=np.float32)
-        ids[i] = id
-        names[i] = name
+        r_spec = np.load(spec_r_path + '/' + rname)
         o_specs[i] = np.expand_dims(o_spec, -1)
         r_specs[i] = np.expand_dims(r_spec, -1)
+        ids[i] = id
+        name = name.encode()
+        names[i] = name
 
-    return ids, names, o_specs, r_specs
+    return np.array(ids), np.array(names), o_specs, r_specs
 
 
 """ Read spectrograms from hard drive """
@@ -96,6 +95,8 @@ def load_spec_array(path):
         x = np.load(ls[i])
         x = np.array(x, dtype=np.float32)
         specs[i] = np.expand_dims(x, -1)
+        ids.append(id)
+        names.append(name)
 
     return ids, names, specs
 
@@ -161,6 +162,76 @@ def split_equal_size(specarray: np.ndarray):
                 ls.append(spec[:,j*maxspeclen:j*maxspeclen+maxspeclen,:])
 
             ls.append(spec[:,-maxspeclen:,:])
+
+    print(bins_to_secs(maxspeclen))
+
+    # teile spektrogramme in stuecke der laenge maxspeclen und fuege alle in liste ein
+
+    return np.array(ls)
+
+def shorten_to_shortest_spec(specarray: np.ndarray):
+    specarray = np.squeeze(specarray)
+    min_t_len = specarray[0].shape[1]
+    finalres = []
+
+    # dimensionen: nr_spec, n_mels, time
+
+    # calc shortest spectrogram
+    for spec_nr in range(specarray.shape[0]):
+        spec = specarray[spec_nr]
+        if spec.shape[1] < min_t_len:
+            min_t_len = spec.shape[1]
+
+    for spec_nr in range(specarray.shape[0]):
+        spec = specarray[spec_nr]
+        spec = spec[:, :min_t_len]
+        finalres.append(spec)
+
+    return np.squeeze(np.array(finalres))
+
+def enlarge_to_longest_spec(specarray: np.ndarray):
+    specarray = np.squeeze(specarray)
+    max_t_len = specarray[0].shape[1]
+
+    # calc longest spectrogram
+    for spec_nr in range(specarray.shape[0]):
+        spec = specarray[spec_nr]
+        if spec.shape[1] > max_t_len:
+            max_t_len = spec.shape[1]
+
+    # create proto spec
+    proto_spec = np.zeros((specarray.shape[0], specarray[0].shape[0], max_t_len))
+
+    for spec_nr in range(specarray.shape[0]):
+        spec = np.squeeze(specarray[spec_nr])
+        proto_spec[spec_nr, :spec.shape[0], :spec.shape[1]] = spec
+
+    return proto_spec
+
+
+def split_size_of_secs(specarray: np.ndarray, secs: int = 5, hop = hop):
+    ls = []
+    specarray = np.squeeze(specarray)
+    maxlen = specarray[0].shape[1]
+
+    # calc spectral time from given spec duration
+    bin_nr = secs_to_bins(secs)
+
+    # calc longest spectrogram
+    for spec_nr in range(specarray.shape[0]):
+        spec = specarray[spec_nr]
+        if spec.shape[1] > maxlen:
+            maxlen = spec.shape[1]
+
+    # calc new dimension from time axis
+    nr_subspecs = np.ceil(maxlen / bin_nr)
+
+    for spec_nr in range(specarray.shape[0]):
+        spec = specarray[spec_nr]
+        protospec = np.zeros((hop ,maxlen))
+        print(spec.shape, protospec.shape)
+        protospec[:,:spec.shape[1]] = spec
+        ls.append(protospec)
 
     # teile spektrogramme in stuecke der laenge maxspeclen und fuege alle in liste ein
 

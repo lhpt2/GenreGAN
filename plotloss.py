@@ -10,13 +10,14 @@ num = csvdata[0][1:-1]
 dloss = csvdata[1][1:-1]
 gloss = csvdata[3][1:-1]
 
+
 print(num)
 #print(dloss)
 #print(gloss)
 
 
-fig, ax = plt.subplots(figsize=(100, 50))
-ax.plot(dloss, label="Discriminator Loss")
-ax.plot(gloss, label="Generator Loss")
-plt.legend()
-plt.show()
+# fig, ax = plt.subplots(figsize=(100, 50))
+# ax.plot(dloss, label="Discriminator Loss")
+# ax.plot(gloss, label="Generator Loss")
+# plt.legend()
+# plt.show()
