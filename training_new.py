@@ -149,8 +149,9 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             sample_trgt = elem[2]
 
             # Train generator ever gen_update batches
+            val = val_pool.next()
             if (batch_nr % gen_update) == 0:
-                losses = train_all(sample_src, sample_trgt, val_pool.next()[1], val_pool.next()[2], GL_ALPHA, GL_BETA, GL_GAMMA, GL_DELTA)
+                losses = train_all(sample_src, sample_trgt, val[1], val[2], GL_ALPHA, GL_BETA, GL_GAMMA, GL_DELTA)
             else:
                 losses = train_d(sample_src, sample_trgt)
 
@@ -215,6 +216,7 @@ if __name__ == "__main__":
 
     dsval = dsval.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+
     #dsval = dsval.shuffle(10000).prefetch(AUTOTUNE)
     #dstrain = dstrain.shuffle(10000).prefetch(AUTOTUNE)
 
