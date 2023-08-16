@@ -1,6 +1,6 @@
 import numpy
 import tensorflow as tf
-from constants import delta
+from constants import GL_DELTA
 
 #Losses
 
@@ -48,7 +48,7 @@ def L_travel(s_src1, s_src2, s_g_src1, s_g_src2):
 
 def loss_siamese(siam_orig1, siam_orig3):
     logits = tf.sqrt(tf.reduce_sum((siam_orig1 - siam_orig3) ** 2, axis=-1, keepdims=True))
-    return tf.reduce_mean(tf.square(tf.maximum((delta - logits), 0.0)))
+    return tf.reduce_mean(tf.square(tf.maximum((GL_DELTA - logits), 0.0)))
 
 def L_s_margin(delta: float, src1, src2, s_src1, s_src2):
     t12 = s_src1 - s_src2

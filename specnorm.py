@@ -28,10 +28,10 @@ class ConvSN2D(tf.keras.layers.Conv2D):
             channel_axis = -1
 
         self.u = self.add_weight(self.name + '_u',
-            shape=tuple([1, self.kernel.shape.as_list()[-1]]),
-            initializer=tf.initializers.RandomNormal(0, 1),
-            trainable=False
-        )
+                                 shape=tuple([1, self.kernel.shape.as_list()[-1]]),
+                                 initializer=tf.initializers.RandomNormal(0, 1),
+                                 trainable=False
+                                 )
 
     def compute_spectral_norm(self, W, new_u, W_shape):
         for _ in range(self.power_iterations):
@@ -80,10 +80,10 @@ class ConvSN2DTranspose(tf.keras.layers.Conv2DTranspose):
             channel_axis = -1
 
         self.u = self.add_weight(self.name + '_u',
-            shape=tuple([1, self.kernel.shape.as_list()[-1]]),
-            initializer=tf.initializers.RandomNormal(0, 1),
-            trainable=False
-        )
+                                 shape=tuple([1, self.kernel.shape.as_list()[-1]]),
+                                 initializer=tf.initializers.RandomNormal(0, 1),
+                                 trainable=False
+                                 )
 
     def compute_spectral_norm(self, W, new_u, W_shape):
         for _ in range(self.power_iterations):
@@ -167,9 +167,9 @@ class DenseSN(Dense):
         super(DenseSN, self).build(input_shape)
 
         self.u = self.add_weight(self.name + '_u',
-            shape=tuple([1, self.kernel.shape.as_list()[-1]]),
-            initializer=tf.initializers.RandomNormal(0, 1),
-            trainable=False)
+                                 shape=tuple([1, self.kernel.shape.as_list()[-1]]),
+                                 initializer=tf.initializers.RandomNormal(0, 1),
+                                 trainable=False)
 
     def compute_spectral_norm(self, W, new_u, W_shape):
         new_v = l2normalize(tf.matmul(new_u, tf.transpose(W)))

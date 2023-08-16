@@ -33,7 +33,7 @@ signal.signal(signal.SIGINT, handler)
 """
 @tf.function
 def proc(x):
-    return tf.image.random_crop(x, size=[hop, 3 * shape, 1])
+    return tf.image.random_crop(x, size=[GL_HOP, 3 * GL_SHAPE, 1])
 
 
 """ Set learning rate """
@@ -235,8 +235,10 @@ def train_d_new(orig, remix):
 
 
 def train(epochs, aspec, dstrain_o, dstrain_r, dsval_o, batch_size=16, lr=0.0001, n_save=6, gupt=5, startep=0):
+    # open logfile
     file = open(f"{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')}_losses.txt", "w")
 
+    # set lr
     update_lr(lr)
     df_list = []
     dr_list = []
@@ -246,13 +248,16 @@ def train(epochs, aspec, dstrain_o, dstrain_r, dsval_o, batch_size=16, lr=0.0001
     c = 0
     g = 0
 
+    # epochs
     for epoch in range(startep, epochs):
         bef = time.time()
-
+        # batches
         for batchi, (a, b) in enumerate(zip(dstrain_o, dstrain_r)):
 
+            # get validation iterator
             validation = dsval_o.as_numpy_iterator().next()
 
+            # cond generator training
             if (batchi % gupt) == 0:
                 dloss_t, dloss_f, _, idloss, gloss, valid_loss = train_all(a, b, validation)
             else:
@@ -310,8 +315,8 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
     s_list = []
     id_list = []
     val_list = []
-    c = 0
-    g = 0
+    e_count = 0
+    temp_count = 0
 
     for epoch in range(startep, epochs):
         bef = time.time()
@@ -331,17 +336,17 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
             g_list.append(loss_g_train)
             s_list.append(loss_s)
             val_list.append(loss_g_valid)
-            c += 1
-            g += 1
+            e_count += 1
+            temp_count += 1
 
             if batchi % 250 == 0:
                 log(time.strftime("%H:%M:%S ", time.localtime()), end='')
-                log(f'[Epoch {epoch}/{epochs}] [Batch {batchi}] [D loss: {np.mean(d_list[-g:], axis=0)} ', end='')
-                log(f'S loss: {np.mean(s_list[-g:], axis=0)}] ', end='')
-                log(f'[G loss: {np.mean(g_list[-g:], axis=0)}] ', end='')
-                log(f'[Val loss: {np.mean(val_list[-g:])}] ', end='')
+                log(f'[Epoch {epoch}/{epochs}] [Batch {batchi}] [D loss: {np.mean(d_list[-temp_count:], axis=0)} ', end='')
+                log(f'S loss: {np.mean(s_list[-temp_count:], axis=0)}] ', end='')
+                log(f'[G loss: {np.mean(g_list[-temp_count:], axis=0)}] ', end='')
+                log(f'[Val loss: {np.mean(val_list[-temp_count:])}] ', end='')
                 log(f'[LR: {lr}]')
-                g = 0
+                temp_count = 0
 
             nbatch = batchi
         # end for batch
@@ -349,67 +354,64 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
         log(f'Time for epoch {epoch}: {int(time.time() - bef)}')
         log(f'Time/Batch {(time.time() - bef) / nbatch}')
 
-        save_end(epoch, np.mean(g_list[-n_save * c:], axis=0), np.mean(d_list[-n_save * c:], axis=0),
-                 np.mean(s_list[-n_save * c:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
-        log(f'Mean D loss: {np.mean(d_list[-c:], axis=0)} Mean G loss: {np.mean(g_list[-c:], axis=0)} Mean S loss: {np.mean(s_list[-c:], axis=0)} Mean Valid loss: {np.mean(val_list[-c:], axis=0)}')
+        save_end(epoch, np.mean(g_list[-n_save * e_count:], axis=0), np.mean(d_list[-n_save * e_count:], axis=0),
+                 np.mean(s_list[-n_save * e_count:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+        log(f'Mean D loss: {np.mean(d_list[-e_count:], axis=0)} Mean G loss: {np.mean(g_list[-e_count:], axis=0)} Mean S loss: {np.mean(s_list[-e_count:], axis=0)} Mean Valid loss: {np.mean(val_list[-e_count:], axis=0)}')
         file.write(
-            f'{np.mean(d_list[-c:], axis=0)},{np.mean(g_list[-c:], axis=0)},{np.mean(s_list[-c:], axis=0)},{lr},{np.mean(val_list[-c:], axis=0)}\n')
-        c = 0
+            f'{np.mean(d_list[-e_count:], axis=0)},{np.mean(g_list[-e_count:], axis=0)},{np.mean(s_list[-e_count:], axis=0)},{lr},{np.mean(val_list[-e_count:], axis=0)}\n')
         logfile.flush()
         file.flush()
 
     # end for epochs
 
-    save_end(epochs - 1, np.mean(g_list[-n_save * c:], axis=0), np.mean(d_list[-n_save * c:], axis=0),
-             np.mean(s_list[-n_save * c:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
-    log(f'Mean D loss: {np.mean(d_list[-c:], axis=0)} Mean G loss: {np.mean(g_list[-c:], axis=0)} Mean S loss: {np.mean(s_list[-c:], axis=0)} Mean Valid loss: {np.mean(val_list[-c:], axis=0)}')
-    file.write(f'{np.mean(d_list[-c:], axis=0)},{np.mean(g_list[-c:], axis=0)},{np.mean(s_list[-c:], axis=0)},{lr},{np.mean(val_list[-c:], axis=0)}\n')
+    save_end(epochs - 1, np.mean(g_list[-n_save * e_count:], axis=0), np.mean(d_list[-n_save * e_count:], axis=0),
+             np.mean(s_list[-n_save * e_count:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+    log(f'Mean D loss: {np.mean(d_list[-e_count:], axis=0)} Mean G loss: {np.mean(g_list[-e_count:], axis=0)} Mean S loss: {np.mean(s_list[-e_count:], axis=0)} Mean Valid loss: {np.mean(val_list[-e_count:], axis=0)}')
+    file.write(f'{np.mean(d_list[-e_count:], axis=0)},{np.mean(g_list[-e_count:], axis=0)},{np.mean(s_list[-e_count:], axis=0)},{lr},{np.mean(val_list[-e_count:], axis=0)}\n')
     file.flush()
     file.close()
 
-
 """ ######################### START OF TRAINING CODE ########################## """
 
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-ids, names, train_o = load_spec_array('../spec_train_o')
-train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
-
-_, _, train_r = load_spec_array('../spec_train_r')
-train_r_split = split_equal_size(train_r)
-del train_r
-
-_, _, val_o = load_spec_array('../spec_val_o')
-val_o_split = split_equal_size(val_o)
-
-_, _, val_r = load_spec_array('../spec_val_r')
-val_r_split = split_equal_size(val_r)
-del val_r
-
-
-#dsa = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc,num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
-# dsa = tf.data.Dataset.from_tensor_slices(adata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
-# dsb = tf.data.Dataset.from_tensor_slices(bdata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
-
-# dsa = tf.data.Dataset.from_tensor_slices(adata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
-# dsb = tf.data.Dataset.from_tensor_slices(bdata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
-
-dstrain_o = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-dstrain_r = tf.data.Dataset.from_tensor_slices(train_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-
-dsval_o = tf.data.Dataset.from_tensor_slices(val_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-dsval_r = tf.data.Dataset.from_tensor_slices(val_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-
-#del train_o_split
-#del train_r_split
-
-gl_savepath = '../Ergebnisse/Versuch03_2_0_LossPaperNoID/'
-#gl_loadpath = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
-
-# continue training
-# gen, critic, siam, [opt_gen, opt_disc] = get_networks(shape, load_model=True, path=gl_loadpath)
-# train(500, dstrain_o, dstrain_r, dsval_o, batch_size=bs, lr=0.0002, n_save=6, gupt=3, startep=295)
-
-# begin training
-gen, critic, siam, [opt_gen, opt_disc, opt_siam] = get_networks2(shape, load_model=False)
-train_new(500, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=bs, lr=0.0002, n_save=6, gupt=3)
+# ids, names, train_o = load_spec_array('../spec_train_o')
+# train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
+#
+# _, _, train_r = load_spec_array('../spec_train_r')
+# train_r_split = split_equal_size(train_r)
+# del train_r
+#
+# _, _, val_o = load_spec_array('../spec_val_o')
+# val_o_split = split_equal_size(val_o)
+#
+# _, _, val_r = load_spec_array('../spec_val_r')
+# val_r_split = split_equal_size(val_r)
+# del val_r
+#
+#
+# #dsa = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc,num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
+# # dsa = tf.data.Dataset.from_tensor_slices(adata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
+# # dsb = tf.data.Dataset.from_tensor_slices(bdata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
+#
+# # dsa = tf.data.Dataset.from_tensor_slices(adata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
+# # dsb = tf.data.Dataset.from_tensor_slices(bdata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
+#
+# dstrain_o = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+# dstrain_r = tf.data.Dataset.from_tensor_slices(train_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+#
+# dsval_o = tf.data.Dataset.from_tensor_slices(val_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+# dsval_r = tf.data.Dataset.from_tensor_slices(val_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+#
+# #del train_o_split
+# #del train_r_split
+#
+# gl_savepath = '../Ergebnisse/Versuch03_2_0_LossPaperNoID/'
+# #gl_loadpath = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
+#
+# # continue training
+# # gen, critic, siam, [opt_gen, opt_disc] = get_networks(shape, load_model=True, path=gl_loadpath)
+# # train(500, dstrain_o, dstrain_r, dsval_o, batch_size=bs, lr=0.0002, n_save=6, gupt=3, startep=295)
+#
+# # begin training
+# gen, critic, siam, [opt_gen, opt_disc, opt_siam] = get_networks2(shape, load_model=False)
+# train_new(500, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=bs, lr=0.0002, n_save=6, gupt=3)

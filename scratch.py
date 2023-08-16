@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from preprocessing import convert_audio_array_to_spec_array, load_audio_array
 from preprocessing import db_spec_to_wave, wave_to_db_spec
 from testing_network import  use_generator
-from constants import sr
+from constants import GL_SR
 import scipy as sc
 
 """

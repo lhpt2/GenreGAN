@@ -3,13 +3,13 @@ import os, datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from constants import sr, shape, log, secs_to_bins, bins_to_secs
+from constants import GL_SR, GL_SHAPE, log, secs_to_bins, bins_to_secs
 from preprocessing import db_spec_to_wave, concat_specarray
 from architecture import get_networks
 
 def save_spec_to_wv(spec, filepath='./test.wav'):
    wv = db_spec_to_wave(spec)
-   sf.write(filepath, wv, sr)
+   sf.write(filepath, wv, GL_SR)
 
 """ Converting from source Spectrogram to target Spectrogram """
 def use_generator(spec, gen, path='./', show=False):
@@ -49,22 +49,22 @@ def testgena(aspec):
    sw = True
 
    while sw:
-      a = np.random.choice(aspec)
+      a = aspec.as_numpy_iterator().next()
 
-      if (a.shape[1]//shape) != 1:
+      if (a.GL_SHAPE[1] // GL_SHAPE) != 1:
          sw=False
 
    dsa = []
-   if a.shape[1]//shape>6:
+   if a.GL_SHAPE[1]//GL_SHAPE>6:
       num=6
    else:
-      num=a.shape[1]//shape
+      num= a.GL_SHAPE[1] // GL_SHAPE
 
-   rn = np.random.randint(a.shape[1]-(num*shape))
+   rn = np.random.randint(a.GL_SHAPE[1] - (num * GL_SHAPE))
 
    for i in range(num):
-      im = a[:,rn+(i*shape):rn+(i*shape)+shape]
-      im = np.reshape(im, (im.shape[0],im.shape[1],1))
+      im = a[:,rn+(i * GL_SHAPE):rn + (i * GL_SHAPE) + GL_SHAPE]
+      im = np.reshape(im, (im.GL_SHAPE[0], im.GL_SHAPE[1], 1))
       dsa.append(im)
 
    return np.array(dsa, dtype=np.float32)
@@ -78,8 +78,8 @@ def save_test_image_full(path, gen, aspec):
    a = concat_specarray(a)
    abwv = db_spec_to_wave(ab)
    awv = db_spec_to_wave(a)
-   sf.write(path+'/orig.wav', awv, sr)
-   sf.write(path+'/new_file.wav', abwv, sr)
+   sf.write(path +'/orig.wav', awv, GL_SR)
+   sf.write(path +'/new_file.wav', abwv, GL_SR)
    #IPython.display.display(IPython.display.Audio(np.squeeze(abwv), rate=sr))
    #IPython.display.display(IPython.display.Audio(np.squeeze(awv), rate=sr))
    #fig, axs = plt.subplots(ncols=2)
@@ -107,7 +107,7 @@ def save_end(epoch, gloss, closs, mloss, gen, critic, siam, aspec, n_save=3, sav
 def specass(a, spec):
    first_handled = False
    con = np.array([])
-   nim = a.shape[0]
+   nim = a.GL_SHAPE[0]
    for i in range(nim-1):
       im = a[i]
       im = np.squeeze(im)
@@ -116,7 +116,7 @@ def specass(a, spec):
          first_handled = True
       else:
          con = np.concatenate((con,im), axis=1)
-   diff = spec.shape[1]-(nim*shape)
+   diff = spec.GL_SHAPE[1] - (nim * GL_SHAPE)
    a = np.squeeze(a)
    con = np.concatenate((con,a[-1,:,-diff:]), axis=1)
    return np.squeeze(con)
@@ -124,22 +124,23 @@ def specass(a, spec):
 """ Splitting input spectrogram into different chunks to feed to the generator """
 def chopspec(spec):
    dsa=[]
-   for i in range(spec.shape[1]//shape):
-      im = spec[:,i*shape:i*shape+shape]
-      im = np.reshape(im, (im.shape[0],im.shape[1],1))
+   for i in range(spec.GL_SHAPE[1] // GL_SHAPE):
+      im = spec[:, i * GL_SHAPE:i * GL_SHAPE + GL_SHAPE]
+      im = np.reshape(im, (im.GL_SHAPE[0], im.GL_SHAPE[1], 1))
       dsa.append(im)
-   imlast = spec[:,-shape:]
-   imlast = np.reshape(imlast, (imlast.shape[0],imlast.shape[1],1))
+   imlast = spec[:, -GL_SHAPE:]
+   imlast = np.reshape(imlast, (imlast.GL_SHAPE[0], imlast.GL_SHAPE[1], 1))
    dsa.append(imlast)
    return np.array(dsa, dtype=np.float32)
 
 
 
 if __name__ == '__main__':
+   GL_SHAPE = 24
    starttime=0
    snippetlen=10
-   gen, critic, siam, [opt_gen, opt_disc] = get_networks(shape, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')
-   spec = np.load('../spec_train_o/001_o_Aiono_and_Diamond_White_We_dont_talk_anymore.npy')
+   gen, critic, siam, [opt_gen, opt_disc] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')
+   spec = np.load('../spec_val_o/155_o_Karol_G_Ocean.npy')
    start: int = secs_to_bins(starttime)
    end: int = secs_to_bins(starttime + snippetlen)
    spec = spec[:, start:end]
