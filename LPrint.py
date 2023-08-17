@@ -28,15 +28,15 @@ class LPrint:
         self.df_loss.append(idict["dfloss"])
         self.dr_loss.append(idict["drloss"])
 
-    def to_str(self, startbackwards: int):
-        msgstr = f'[D loss: {str(np.mean(self.d_loss[-startbackwards:]))[:self.nr]}, real: {str(np.mean(self.dr_loss[-startbackwards:]))[:self.nr]}, fake: {str(np.mean(self.df_loss[-startbackwards:]))[:self.nr]}] '
-        msgstr += f'[G loss: {str(np.mean(self.g_loss[-startbackwards:]))[:self.nr]}] '
-        msgstr += f'[S loss: {str(np.mean(self.s_loss[-startbackwards:]))[:self.nr]}] '
-        msgstr += f'[ID loss: {str(np.mean(self.id_loss[-startbackwards:]))[:self.nr]}] '
-        msgstr += f'[Val loss: {str(np.mean(self.val_loss[-startbackwards:]))[:self.nr]}] '
+    def to_str(self, back: int):
+        msgstr = f'[D loss: {str(np.mean(self.d_loss[-back:]))[:self.nr]}, real: {str(np.mean(self.dr_loss[-back:]))[:self.nr]}, fake: {str(np.mean(self.df_loss[-back:]))[:self.nr]}] '
+        msgstr += f'[G loss: {str(np.mean(self.g_loss[-back:]))[:self.nr]}] '
+        msgstr += f'[S loss: {str(np.mean(self.s_loss[-back:]))[:self.nr]}] '
+        msgstr += f'[ID loss: {str(np.mean(self.id_loss[-back:]))[:self.nr]}] '
+        msgstr += f'[Val loss: {str(np.mean(self.val_loss[-back:]))[:self.nr]}] '
         return msgstr
 
-    def get_mean_all(self):
+    def get_mean_fulllist(self):
         return self.get_mean(len(self.g_loss))
 
     def to_csv_part(self, back: int):
