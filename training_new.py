@@ -283,9 +283,5 @@ if __name__ == "__main__":
 
     log(getconstants())
 
-    aspec = tf.expand_dims(dstrain.as_numpy_iterator().next()[1][0], -1)
-
-    save_test_image_full('../', gl_gen, aspec)
-
     # start training
-    #train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
+    train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
