@@ -4,6 +4,7 @@ import signal
 
 import tensorflow as tf
 import numpy as np
+from tensorflow.python.data import AUTOTUNE
 
 from constants import *
 
@@ -145,15 +146,17 @@ def train(epochs, aspec, batch_size=16, lr=0.0001, n_save=6, gupt=5, startep=0):
     c = 0
     g = 0
 
+
     for epoch in range(startep, epochs):
         bef = time.time()
 
-        for batchi, (a, b) in enumerate(zip(dstrain_o, dstrain_r)):
 
-            validation = dsval_o.as_numpy_iterator().next()
+        for batchi, (id, a, b) in enumerate(dstrain):
+
+            (_, vals, valt) = dsval_o.as_numpy_iterator().next()
 
             if (batchi % gupt) == 0:
-                dloss_t, dloss_f, _, idloss, gloss, valid_loss = train_all(a, b, validation)
+                dloss_t, dloss_f, _, idloss, gloss, valid_loss = train_all(a, b, vals)
             else:
                 dloss_t, dloss_f = train_d(a, b)
 
@@ -202,20 +205,20 @@ def train(epochs, aspec, batch_size=16, lr=0.0001, n_save=6, gupt=5, startep=0):
 
 """ ######################### START OF TRAINING CODE ########################## """
 
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+#os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-train_o = load_spec_array('../spec_train_o')
-train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
+#train_o = load_spec_array('../spec_train_o')
+#train_o_split = split_equal_size(train_o)  # hier werden die daten in gleiche laenge aufgesteilt
 
-train_r = load_spec_array('../spec_train_r')
-train_r_split = split_equal_size(train_r)
-del train_r
+#train_r = load_spec_array('../spec_train_r')
+#train_r_split = split_equal_size(train_r)
+#del train_r
 
-val_o = load_spec_array('../spec_val_o')
-val_o_split = split_equal_size(val_o)
+#val_o = load_spec_array('../spec_val_o')
+#val_o_split = split_equal_size(val_o)
 
-val_r = load_spec_array('../spec_val_r')
-val_r_split = split_equal_size(val_r)
+#val_r = load_spec_array('../spec_val_r')
+#val_r_split = split_equal_size(val_r)
 
 # dsa = tf.data.Dataset.from_tensor_slices(adata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
 # dsb = tf.data.Dataset.from_tensor_slices(bdata).repeat(50).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
@@ -223,14 +226,19 @@ val_r_split = split_equal_size(val_r)
 # dsa = tf.data.Dataset.from_tensor_slices(adata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
 # dsb = tf.data.Dataset.from_tensor_slices(bdata).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
 
-dstrain_o = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
-dstrain_r = tf.data.Dataset.from_tensor_slices(train_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+#dstrain_o = tf.data.Dataset.from_tensor_slices(train_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+#dstrain_r = tf.data.Dataset.from_tensor_slices(train_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
 
-dsval_o = tf.data.Dataset.from_tensor_slices(val_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
+#dsval_o = tf.data.Dataset.from_tensor_slices(val_o_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True).prefetch(tf.data.experimental.AUTOTUNE)
 # dsval_r = tf.data.Dataset.from_tensor_slices(val_r_split).map(proc, num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(10000).batch(bs, drop_remainder=True)
 
-del train_o_split
-del train_r_split
+#del train_o_split
+#del train_r_split
+
+dstrain = tf.data.Dataset.load('dstrainQuick').shuffle(10000).batch(bs, drop_remainder=True).prefetch(AUTOTUNE)
+dsval_o = tf.data.Dataset.load('dsvalQuick').shuffle(10000).batch(bs, drop_remainder=True).prefetch(AUTOTUNE)
+
+train_o = dstrain.as_numpy_iterator()
 
 gl_savepath = '../Ergebnisse/Versuch02_1_0_Validierung/'
 gl_loadpath = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
