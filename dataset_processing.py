@@ -204,9 +204,9 @@ def construct_save_ds(ids, origs, remixes, path):
     print(f"Data saved to {path}")
 def save_npys_to_Dataset(origpath, savepath, min=0, max=0):
     ids, train_o, train_r = load_spec_array_splitseconds(origpath, min=min, max=max)
-    print("IDs", ids.GL_SHAPE)
-    print("Set Orig", train_o.GL_SHAPE[0], train_o[0].GL_SHAPE[0], train_o[1].GL_SHAPE[0])
-    print("Set Remix", train_r.GL_SHAPE[0], train_r[0].GL_SHAPE[0], train_r[1].GL_SHAPE[0])
+    print("IDs", ids.shape)
+    print("Set Orig", train_o.shape[0], train_o[0].shape[0], train_o[1].shape[0])
+    print("Set Remix", train_r.shape[0], train_r[0].shape[0], train_r[1].shape[0])
     construct_save_ds(ids, train_o, train_r, savepath)
 def load_dsparts(name: str):
     ds_names = glob(f"./{name}_part*")
