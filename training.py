@@ -318,20 +318,24 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
     e_count = 0
     temp_count = 0
 
+    # epoch
     for epoch in range(startep, epochs):
         bef = time.time()
 
+        # batches
         for batchi, (a, b) in enumerate(zip(dstrain_o, dstrain_r)):
 
             validation = dsval_o.as_numpy_iterator().next()
             val_r = dsval_r.as_numpy_iterator().next()
 
 
+            # training gen_update
             if (batchi % gupt) == 0:
                 loss_d, loss_g_train, loss_g_valid, loss_s = train_all_new(a, b, validation, val_r)
             else:
                 loss_d = train_d_new(a, b)
 
+            # append losses
             d_list.append(loss_d)
             g_list.append(loss_g_train)
             s_list.append(loss_s)
@@ -354,20 +358,33 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
         log(f'Time for epoch {epoch}: {int(time.time() - bef)}')
         log(f'Time/Batch {(time.time() - bef) / nbatch}')
 
-        save_end(epoch, np.mean(g_list[-n_save * e_count:], axis=0), np.mean(d_list[-n_save * e_count:], axis=0),
-                 np.mean(s_list[-n_save * e_count:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+        #print losses  and save ...
+        save_end(epoch,
+                 np.mean(g_list[-n_save * e_count:], axis=0),
+                 np.mean(d_list[-n_save * e_count:], axis=0),
+                 np.mean(s_list[-n_save * e_count:], axis=0),
+                 gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+
         log(f'Mean D loss: {np.mean(d_list[-e_count:], axis=0)} Mean G loss: {np.mean(g_list[-e_count:], axis=0)} Mean S loss: {np.mean(s_list[-e_count:], axis=0)} Mean Valid loss: {np.mean(val_list[-e_count:], axis=0)}')
+
         file.write(
             f'{np.mean(d_list[-e_count:], axis=0)},{np.mean(g_list[-e_count:], axis=0)},{np.mean(s_list[-e_count:], axis=0)},{lr},{np.mean(val_list[-e_count:], axis=0)}\n')
+
         logfile.flush()
         file.flush()
 
     # end for epochs
 
-    save_end(epochs - 1, np.mean(g_list[-n_save * e_count:], axis=0), np.mean(d_list[-n_save * e_count:], axis=0),
-             np.mean(s_list[-n_save * e_count:], axis=0), gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+    save_end(epochs - 1,
+             np.mean(g_list[-n_save * e_count:], axis=0),
+             np.mean(d_list[-n_save * e_count:], axis=0),
+             np.mean(s_list[-n_save * e_count:], axis=0),
+             gen, critic, siam, dstrain_o, n_save=1, save_path=gl_savepath)
+
     log(f'Mean D loss: {np.mean(d_list[-e_count:], axis=0)} Mean G loss: {np.mean(g_list[-e_count:], axis=0)} Mean S loss: {np.mean(s_list[-e_count:], axis=0)} Mean Valid loss: {np.mean(val_list[-e_count:], axis=0)}')
+
     file.write(f'{np.mean(d_list[-e_count:], axis=0)},{np.mean(g_list[-e_count:], axis=0)},{np.mean(s_list[-e_count:], axis=0)},{lr},{np.mean(val_list[-e_count:], axis=0)}\n')
+
     file.flush()
     file.close()
 
