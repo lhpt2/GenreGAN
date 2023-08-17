@@ -223,5 +223,9 @@ if __name__ == "__main__":
     # do things: get networks with proper size (shape should be changed)
     gen, critic, siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
 
+    print(gen.summary())
+    print(critic.summary())
+    print(siam.summary())
+
     # start training
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)

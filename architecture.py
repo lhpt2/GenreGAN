@@ -44,7 +44,7 @@ def deconv2d(layer_input, layer_res, filters, kernel_size, conc=True, scalev=Fal
 
 """ Extract function: splitting spectrograms """
 def extract_image(im):
-  im = np.expand_dims(im, 0)
+  im = np.expand_dims(im, -1)
   im1 = Cropping2D(((0,0), (0, 2*(im.shape[2] // 3))))(im)
   im2 = Cropping2D(((0,0), (im.shape[2] // 3, im.shape[2] // 3)))(im)
   im3 = Cropping2D(((0,0), (2 * (im.shape[2] // 3), 0)))(im)
