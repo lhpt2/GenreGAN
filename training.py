@@ -372,6 +372,7 @@ def train_new(epochs, dstrain_o, dstrain_r, dsval_o, dsval_r, batch_size=16, lr=
 
         logfile.flush()
         file.flush()
+        e_count = 0
 
     # end for epochs
 
