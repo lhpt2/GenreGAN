@@ -50,7 +50,7 @@ def melspecfunc(waveform, hop=GL_HOP, sr=GL_SR):
 
 def GRAD(spec, transform_fn, samples=None, init_x0=None, maxiter=1000, tol=1e-6, verbose=1, evaiter=10, lr=0.003):
     #samples = (spec.shape[-1] * hop)
-    samples = (spec.GL_SHAPE[-1] - 1) * 192 + 6 * 192
+    samples = (spec.shape[-1] - 1) * 192 + 6 * 192
 
     spec = np.transpose(spec, (0, 2, 1))
     if init_x0 is None:

@@ -90,8 +90,8 @@ if __name__ == '__main__':
     for f0, f1, f2, f3 in ds.take(1):
         print(int(f0))
         print(f1.numpy().decode())
-        print(f2.GL_SHAPE)
-        print(f3.GL_SHAPE)
+        print(f2.shape)
+        print(f3.shape)
 
     #s = tf.io.serialize_tensor(spec_train_o[0])
     #print(type(s))

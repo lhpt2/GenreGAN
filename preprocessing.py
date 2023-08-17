@@ -100,8 +100,8 @@ def load_spec_array(path):
 
 """ Generate spectrograms from waveform array """
 def convert_audio_array_to_spec_array(data):
-    specs=np.empty(data.GL_SHAPE[0], dtype=object)
-    for i in range(data.GL_SHAPE[0]):
+    specs=np.empty(data.shape[0], dtype=object)
+    for i in range(data.shape[0]):
         x = data[i]
         S = wave_to_db_spec(x)
         S = np.array(S, dtype=np.float32)
@@ -143,10 +143,10 @@ def split_equal_size(specarray: np.ndarray):
     # fuer jedes element in data
     for i in range(specarray.shape[0] - 1):
 
-        if specarray[i].GL_SHAPE[1]<=specarray[i + 1].GL_SHAPE[1]:
-            local_minimum = specarray[i].GL_SHAPE[1]
+        if specarray[i].shape[1]<=specarray[i + 1].shape[1]:
+            local_minimum = specarray[i].shape[1]
         else:
-            local_minimum = specarray[i + 1].GL_SHAPE[1]
+            local_minimum = specarray[i + 1].shape[1]
         # ermittle kuerzeste spektrumlaenge
 
         if 3*GL_SHAPE <= local_minimum < maxspeclen:
@@ -155,8 +155,8 @@ def split_equal_size(specarray: np.ndarray):
 
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
-        if spec.GL_SHAPE[1]>=3*GL_SHAPE:
-            for j in range(spec.GL_SHAPE[1] // maxspeclen):
+        if spec.shape[1]>=3*GL_SHAPE:
+            for j in range(spec.shape[1] // maxspeclen):
                 ls.append(spec[:,j*maxspeclen:j*maxspeclen+maxspeclen,:])
 
             ls.append(spec[:,-maxspeclen:,:])
@@ -169,7 +169,7 @@ def split_equal_size(specarray: np.ndarray):
 
 def shorten_to_shortest_spec(specarray: np.ndarray):
     specarray = np.squeeze(specarray)
-    min_t_len = specarray[0].GL_SHAPE[1]
+    min_t_len = specarray[0].shape[1]
     finalres = []
 
     # dimensionen: nr_spec, n_mels, time
@@ -177,8 +177,8 @@ def shorten_to_shortest_spec(specarray: np.ndarray):
     # calc shortest spectrogram
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
-        if spec.GL_SHAPE[1] < min_t_len:
-            min_t_len = spec.GL_SHAPE[1]
+        if spec.shape[1] < min_t_len:
+            min_t_len = spec.shape[1]
 
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
@@ -189,16 +189,16 @@ def shorten_to_shortest_spec(specarray: np.ndarray):
 
 def enlarge_to_longest_spec(specarray: np.ndarray):
     specarray = np.squeeze(specarray)
-    max_t_len = specarray[0].GL_SHAPE[1]
+    max_t_len = specarray[0].shape[1]
 
     # calc longest spectrogram
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
-        if spec.GL_SHAPE[1] > max_t_len:
-            max_t_len = spec.GL_SHAPE[1]
+        if spec.shape[1] > max_t_len:
+            max_t_len = spec.shape[1]
 
     # create proto spec
-    proto_spec = np.zeros((specarray.shape[0], specarray[0].GL_SHAPE[0], max_t_len))
+    proto_spec = np.zeros((specarray.shape[0], specarray[0].shape[0], max_t_len))
 
     for spec_nr in range(specarray.shape[0]):
         spec = np.squeeze(specarray[spec_nr])
@@ -209,7 +209,7 @@ def enlarge_to_longest_spec(specarray: np.ndarray):
 def split_size_of_secs(specarray: np.ndarray, secs: int = 5, hop = GL_HOP):
     ls = []
     specarray = np.squeeze(specarray)
-    maxlen = specarray[0].GL_SHAPE[1]
+    maxlen = specarray[0].shape[1]
 
     # calc spectral time from given spec duration
     bin_nr = secs_to_bins(secs)
@@ -217,8 +217,8 @@ def split_size_of_secs(specarray: np.ndarray, secs: int = 5, hop = GL_HOP):
     # calc longest spectrogram
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
-        if spec.GL_SHAPE[1] > maxlen:
-            maxlen = spec.GL_SHAPE[1]
+        if spec.shape[1] > maxlen:
+            maxlen = spec.shape[1]
 
     # calc new dimension from time axis
     nr_subspecs = np.ceil(maxlen / bin_nr)
@@ -226,8 +226,8 @@ def split_size_of_secs(specarray: np.ndarray, secs: int = 5, hop = GL_HOP):
     for spec_nr in range(specarray.shape[0]):
         spec = specarray[spec_nr]
         protospec = np.zeros((hop ,maxlen))
-        print(spec.GL_SHAPE, protospec.shape)
-        protospec[:,:spec.GL_SHAPE[1]] = spec
+        print(spec.shape, protospec.shape)
+        protospec[:,:spec.shape[1]] = spec
         ls.append(protospec)
 
     # teile spektrogramme in stuecke der laenge maxspeclen und fuege alle in liste ein
