@@ -71,7 +71,7 @@ def testgena(aspec):
 
 """ Show results mid-training """
 def save_test_image_full(path, gen, aspec):
-   aspec = aspec.as_numpy_iterator.next()
+   aspec = aspec.as_numpy_iterator().next()
    a = testgena(aspec)
    print(a.shape)
    ab = gen(a, training=False)
