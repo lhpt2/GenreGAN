@@ -2,10 +2,12 @@ import soundfile as sf
 import os, datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from constants import GL_SR, GL_SHAPE, log, secs_to_bins, bins_to_secs
 from preprocessing import db_spec_to_wave, concat_specarray
 from architecture import get_networks
+
 
 def save_spec_to_wv(spec, filepath='./test.wav'):
    wv = db_spec_to_wave(spec)
@@ -49,36 +51,49 @@ def testgena(aspec):
    sw = True
 
    while sw:
-      a = aspec.as_numpy_iterator().next()
+      a = aspec
 
-      if (a.GL_SHAPE[1] // GL_SHAPE) != 1:
+      if (a.shape[1] // GL_SHAPE) != 1:
          sw=False
 
    dsa = []
-   if a.GL_SHAPE[1]//GL_SHAPE>6:
+   if a.shape[1] // GL_SHAPE > 6:
       num=6
    else:
-      num= a.GL_SHAPE[1] // GL_SHAPE
+      num= a.shape[1] // GL_SHAPE
 
-   rn = np.random.randint(a.GL_SHAPE[1] - (num * GL_SHAPE))
+   rn = np.random.randint(a.shape[1] - (num * GL_SHAPE))
 
    for i in range(num):
       im = a[:,rn+(i * GL_SHAPE):rn + (i * GL_SHAPE) + GL_SHAPE]
-      im = np.reshape(im, (im.GL_SHAPE[0], im.GL_SHAPE[1], 1))
+      im = np.reshape(im, (im.shape[0], im.shape[1], 1))
       dsa.append(im)
 
    return np.array(dsa, dtype=np.float32)
 
+def cut4gen(spec):
+   return tf.reshape(spec, [3, 192, 192, 1])
+
+def uncut4gen(spec):
+   return tf.squeeze(tf.reshape(spec, [1, 192, 576, 1]))
+
 """ Show results mid-training """
 def save_test_image_full(path, gen, aspec):
-   aspec = aspec.as_numpy_iterator().next()
-   a = testgena(aspec)
-   print(a.shape)
+   #a = testgena(aspec)
+
+   # get right sample from dataset and add alibi dim for generator
+   aspec = aspec[1][0]
+   aspec = np.expand_dims(aspec, -1)
+
+   a = cut4gen(aspec)
    ab = gen(a, training=False)
-   ab = concat_specarray(ab)
-   a = concat_specarray(a)
+
+   ab = uncut4gen(ab)
+   a = uncut4gen(a)
+
    abwv = db_spec_to_wave(ab)
    awv = db_spec_to_wave(a)
+
    sf.write(path +'/orig.wav', awv, GL_SR)
    sf.write(path +'/new_file.wav', abwv, GL_SR)
    #IPython.display.display(IPython.display.Audio(np.squeeze(abwv), rate=sr))
@@ -107,7 +122,7 @@ def save_end(epoch, gloss, closs, mloss, gen, critic, siam, aspec, n_save=3, sav
 def specass(a, spec):
    first_handled = False
    con = np.array([])
-   nim = a.GL_SHAPE[0]
+   nim = a.shape[0]
    for i in range(nim-1):
       im = a[i]
       im = np.squeeze(im)
@@ -116,7 +131,7 @@ def specass(a, spec):
          first_handled = True
       else:
          con = np.concatenate((con,im), axis=1)
-   diff = spec.GL_SHAPE[1] - (nim * GL_SHAPE)
+   diff = spec.shape[1] - (nim * GL_SHAPE)
    a = np.squeeze(a)
    con = np.concatenate((con,a[-1,:,-diff:]), axis=1)
    return np.squeeze(con)
@@ -124,19 +139,19 @@ def specass(a, spec):
 """ Splitting input spectrogram into different chunks to feed to the generator """
 def chopspec(spec):
    dsa=[]
-   for i in range(spec.GL_SHAPE[1] // GL_SHAPE):
+   for i in range(spec.shape[1] // GL_SHAPE):
       im = spec[:, i * GL_SHAPE:i * GL_SHAPE + GL_SHAPE]
-      im = np.reshape(im, (im.GL_SHAPE[0], im.GL_SHAPE[1], 1))
+      im = np.reshape(im, (im.shape[0], im.shape[1], 1))
       dsa.append(im)
    imlast = spec[:, -GL_SHAPE:]
-   imlast = np.reshape(imlast, (imlast.GL_SHAPE[0], imlast.GL_SHAPE[1], 1))
+   imlast = np.reshape(imlast, (imlast.shape[0], imlast.shape[1], 1))
    dsa.append(imlast)
    return np.array(dsa, dtype=np.float32)
 
 
 
 if __name__ == '__main__':
-   GL_SHAPE = 24
+   #GL_SHAPE = 24
    starttime=0
    snippetlen=10
    gen, critic, siam, [opt_gen, opt_disc] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')

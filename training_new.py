@@ -9,7 +9,7 @@ from tensorflow.python.data import AUTOTUNE
 
 from architecture import extract_image, assemble_image
 from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id
-from testing_network import save_end
+from testing_network import save_end, save_test_image_full
 
 from constants import *
 from dataset_processing import load_dsparts, save_spec_to_wv
@@ -230,7 +230,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
                  np.mean(g_list[-n_save * batch_count:], axis=0),
                  np.mean(d_list[-n_save * batch_count:], axis=0),
                  np.mean(s_list[-n_save * batch_count:], axis=0),
-                 gl_gen, gl_discr, gl_siam, dstrain, save_path=GL_SAVE)
+                 gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
 
         log(f'Mean D loss: {np.mean(d_list[-batch_count:], axis=0)} Mean G loss: {np.mean(g_list[-batch_count:], axis=0)} Mean Val loss: {np.mean(val_list[-batch_count:], axis=0)} Mean ID loss: {np.mean(id_list[-batch_count:], axis=0)}, Mean S loss: {np.mean(s_list[-batch_count:], axis=0)}')
 
@@ -250,7 +250,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
              np.mean(g_list[-last_nsave:], axis=0),
              np.mean(d_list[-last_nsave:], axis=0),
              np.mean(s_list[-last_nsave:], axis=0),
-             gl_gen, gl_discr, gl_siam, dstrain, save_path=GL_SAVE)
+             gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
 
     log(f'Mean D loss: {np.mean(d_list[-last_nsave:], axis=0)} Mean G loss: {np.mean(g_list[-last_nsave:], axis=0)} Mean Val loss: {np.mean(val_list[-last_nsave:], axis=0)} Mean ID loss: {np.mean(id_list[-last_nsave:], axis=0)}, Mean S loss: {np.mean(s_list[-last_nsave:], axis=0)}')
 
@@ -283,5 +283,9 @@ if __name__ == "__main__":
 
     log(getconstants())
 
+    aspec = tf.expand_dims(dstrain.as_numpy_iterator().next()[1][0], -1)
+
+    save_test_image_full('../', gl_gen, aspec)
+
     # start training
-    train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
+    #train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
