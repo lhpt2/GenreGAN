@@ -71,6 +71,7 @@ def testgena(aspec):
 
 """ Show results mid-training """
 def save_test_image_full(path, gen, aspec):
+   aspec = aspec.as_numpy_iterator.next()
    a = testgena(aspec)
    print(a.shape)
    ab = gen(a, training=False)
@@ -93,10 +94,9 @@ def save_test_image_full(path, gen, aspec):
 
 """ Save in training loop """
 def save_end(epoch, gloss, closs, mloss, gen, critic, siam, aspec, n_save=3, save_path='./'):                 #use custom save_path (i.e. Drive '../content/drive/My Drive/')
-   if epoch % n_save == 0:
       log(f'Saving epoch {epoch}...')
       #path = f'{save_path}/MELGANVC-{str(gloss)[:9]}-{str(closs)[:9]}-{str(mloss)[:9]}'
-      path = f'{save_path}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")}_{str(epoch)}_{str(gloss)[:9]}_{str(closs)[:9]}'
+      path = f'{save_path}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")}_{str(epoch)}_{str(gloss)[:4]}_{str(closs)[:4]}'
       os.mkdir(path)
       gen.save_weights(path+'/gen.h5')
       critic.save_weights(path+'/critic.h5')
