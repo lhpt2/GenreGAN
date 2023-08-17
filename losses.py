@@ -12,8 +12,8 @@ def mae(x,y):
 def mse(x,y):
     return tf.reduce_mean((x-y)**2)
 
-def L_g_id(trgt, g_trgt):
-   return tf.reduce_mean(l2_squared(g_trgt - trgt))
+def L_g_id(alpha: float, trgt, g_trgt):
+   return alpha * tf.reduce_mean(l2_squared(g_trgt - trgt))
 # finished
 
 def loss_travel(siam_orig1, siam_gen_orig1, siam_orig3, siam_gen_orig3):
@@ -40,19 +40,19 @@ def dot(x, y):
 def cos_sim(A, B):
     return dot(A, B) / (mag(A) * mag(B))
 
-def L_travel(s_src1, s_src2, s_g_src1, s_g_src2):
+def L_travel(beta: float, s_src1, s_src2, s_g_src1, s_g_src2):
     t12 = s_src1 - s_src2
     t_12 = s_g_src1 - s_g_src2
-    return tf.reduce_mean(cos_sim(t12, t_12) + l2_squared(t12 - t_12))
+    return beta * tf.reduce_mean(cos_sim(t12, t_12) + l2_squared(t12 - t_12))
 #finished
 
 def loss_siamese(siam_orig1, siam_orig3):
     logits = tf.sqrt(tf.reduce_sum((siam_orig1 - siam_orig3) ** 2, axis=-1, keepdims=True))
     return tf.reduce_mean(tf.square(tf.maximum((GL_DELTA - logits), 0.0)))
 
-def L_s_margin(delta: float, src1, src2, s_src1, s_src2):
+def L_s_margin(gamma: float, delta: float, src1, src2, s_src1, s_src2):
     t12 = s_src1 - s_src2
-    return tf.reduce_mean(tf.maximum(0.0, delta - l2_norm(t12)))
+    return gamma * tf.reduce_mean(tf.maximum(0.0, delta - l2_norm(t12)))
 # finished
 
 
@@ -69,10 +69,10 @@ def L_g_adv(d_g_src):
 # all param losses
 
 def L_s_full(beta: float, gamma: float, delta: float, src1, src2, s_src1, s_src2, s_g_src1, s_g_src2):
-    return beta * L_travel(s_src1, s_src2, s_g_src1, s_g_src2) + gamma * L_s_margin(delta, src1, src2, s_src1, s_src2)
+    return L_travel(beta, s_src1, s_src2, s_g_src1, s_g_src2) + L_s_margin(gamma, delta, src1, src2, s_src1, s_src2)
 
 def L_g_full(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s_g_src1, s_g_src2):
-    return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * L_travel(s_src1, s_src2, s_g_src1, s_g_src2)
+    return L_g_adv(d_g_src) + L_g_id(alpha, trgt, g_trgt) + L_travel(beta, s_src1, s_src2, s_g_src1, s_g_src2)
 
 # final losses
 
@@ -89,17 +89,17 @@ def L_d_real(d_target):
     return tf.reduce_mean(tf.maximum(0., 1 - d_target))
     #return -tf.reduce_mean(tf.minimum(0., -1 + d_target))
 
-def L_s(beta: float, gamma:float, l_travel, l_s_margin: float):
-    return beta * l_travel + gamma * l_s_margin
+def L_s(l_travel, l_s_margin: float):
+    return l_travel + l_s_margin
 
-#def L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, l_travel: float):
-#    return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * l_travel
+#def L_g(alpha: float, d_g_src, trgt, g_trgt, l_travel: float):
+#    return L_g_adv(d_g_src) + L_g_id(alpha, trgt, g_trgt) + l_travel
 
-def L_g(alpha: float, beta: float, d_g_src, l_travel: float, l_id: float):
-    return L_g_adv(d_g_src) + alpha * l_id + beta * l_travel
+def L_g(d_g_src, l_travel: float, l_id: float):
+    return L_g_adv(d_g_src) + l_id + l_travel
 
-def L_g_noID(beta: float, d_g_src, l_travel: float):
-    return L_g_adv(d_g_src) + beta * l_travel
+def L_g_noID(d_g_src, l_travel: float):
+    return L_g_adv(d_g_src) + l_travel
 
 """ 
 Losses code
