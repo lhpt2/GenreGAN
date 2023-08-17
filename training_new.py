@@ -145,10 +145,8 @@ def make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list,
     msgstr += f'{str(np.mean(val_list[-back:]))[:decimals]}'
     return msgstr
 
-
 def csvheader():
     return 'epoch,dloss,drloss,dfloss,gloss,sloss,idloss,vloss,lr'
-
 
 def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300, batch_size=16, lr=0.0001, n_save=6,
           gen_update=5, startep=0):
@@ -169,7 +167,8 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
     val_list = []
 
     # epoch count for integrated loss
-    ep_count = 0
+    batch_count = 0
+    final_batch_c = 0
     temp_count = 0
 
     # GET validation iterator
@@ -201,7 +200,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             s_list.append(loss_s)
             id_list.append(l_id)
             val_list.append(loss_g_val)
-            ep_count += 1
+            batch_count += 1
             temp_count += 1
 
             # Print status every 100 batches
@@ -223,34 +222,36 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
         log(f'Time/Batch {(time.time() - before) / nbatch}')
 
         # print losses and write to loss_file
-        save_end(epoch,
-                 np.mean(g_list[-n_save * ep_count:], axis=0),
-                 np.mean(d_list[-n_save * ep_count:], axis=0),
-                 np.mean(s_list[-n_save * ep_count:], axis=0),
-                 gl_gen, gl_discr, gl_siam, dstrain, n_save=n_save, save_path=GL_SAVE)
+        if epoch % n_save == 0:
+            save_end(epoch,
+                 np.mean(g_list[-n_save * batch_count:], axis=0),
+                 np.mean(d_list[-n_save * batch_count:], axis=0),
+                 np.mean(s_list[-n_save * batch_count:], axis=0),
+                 gl_gen, gl_discr, gl_siam, dstrain, save_path=GL_SAVE)
 
-        log(f'Mean D loss: {np.mean(d_list[-ep_count:], axis=0)} Mean G loss: {np.mean(g_list[-ep_count:], axis=0)} Mean Val loss: {np.mean(val_list[-ep_count:], axis=0)} Mean ID loss: {np.mean(id_list[-ep_count:], axis=0)}, Mean S loss: {np.mean(s_list[-ep_count:], axis=0)}')
+        log(f'Mean D loss: {np.mean(d_list[-batch_count:], axis=0)} Mean G loss: {np.mean(g_list[-batch_count:], axis=0)} Mean Val loss: {np.mean(val_list[-batch_count:], axis=0)} Mean ID loss: {np.mean(id_list[-batch_count:], axis=0)}, Mean S loss: {np.mean(s_list[-batch_count:], axis=0)}')
 
-        losses_csv = f'{epoch},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -ep_count, 6)},{lr}\n'
+        losses_csv = f'{epoch},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -batch_count, 6)},{lr}\n'
         csvfile.write(losses_csv)
 
         logfile.flush()
         csvfile.flush()
-        ep_count = 0
+        final_batch_c = batch_count
+        batch_count = 0
 
     # end for epochs
 
     # print FINAL losses and write to loss file
+    last_nsave = (epochs - 1) % n_save * final_batch_c
     save_end(epochs - 1,
-             np.mean(g_list[-n_save * ep_count:], axis=0),
-             np.mean(d_list[-n_save * ep_count:], axis=0),
-             np.mean(s_list[-n_save * ep_count:], axis=0),
-             gl_gen, gl_discr, gl_siam, dstrain, n_save=n_save, save_path=GL_SAVE)
+             np.mean(g_list[-last_nsave:], axis=0),
+             np.mean(d_list[-last_nsave:], axis=0),
+             np.mean(s_list[-last_nsave:], axis=0),
+             gl_gen, gl_discr, gl_siam, dstrain, save_path=GL_SAVE)
 
+    log(f'Mean D loss: {np.mean(d_list[-last_nsave:], axis=0)} Mean G loss: {np.mean(g_list[-last_nsave:], axis=0)} Mean Val loss: {np.mean(val_list[-last_nsave:], axis=0)} Mean ID loss: {np.mean(id_list[-last_nsave:], axis=0)}, Mean S loss: {np.mean(s_list[-last_nsave:], axis=0)}')
 
-    log(f'Mean D loss: {np.mean(d_list[-ep_count:], axis=0)} Mean G loss: {np.mean(g_list[-ep_count:], axis=0)} Mean Val loss: {np.mean(val_list[-ep_count:], axis=0)} Mean ID loss: {np.mean(id_list[-ep_count:], axis=0)}, Mean S loss: {np.mean(s_list[-ep_count:], axis=0)}')
-
-    losses_csv = f'{epochs - 1},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -ep_count, 6)},{lr}\n'
+    losses_csv = f'{epochs - 1},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -last_nsave, 6)},{lr}\n'
     csvfile.write(losses_csv)
 
     logfile.flush()
