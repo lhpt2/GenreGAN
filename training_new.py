@@ -226,10 +226,19 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
         # print losses and write to loss_file
         if epoch % n_save == 0:
+            if epoch == 0:
+                gloss = np.mean(g_list[0:], axis=0),
+                dloss = np.mean(d_list[0:], axis=0),
+                sloss = np.mean(s_list[0:], axis=0),
+            else:
+                gloss = np.mean(g_list[-n_save * batch_count:], axis=0),
+                dloss = np.mean(d_list[-n_save * batch_count:], axis=0),
+                sloss = np.mean(s_list[-n_save * batch_count:], axis=0),
+
             save_end(epoch,
-                 np.mean(g_list[-n_save * batch_count:], axis=0),
-                 np.mean(d_list[-n_save * batch_count:], axis=0),
-                 np.mean(s_list[-n_save * batch_count:], axis=0),
+                     gloss,
+                     dloss,
+                     sloss,
                  gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
 
         log(f'Mean D loss: {np.mean(d_list[-batch_count:], axis=0)} Mean G loss: {np.mean(g_list[-batch_count:], axis=0)} Mean Val loss: {np.mean(val_list[-batch_count:], axis=0)} Mean ID loss: {np.mean(id_list[-batch_count:], axis=0)}, Mean S loss: {np.mean(s_list[-batch_count:], axis=0)}')
