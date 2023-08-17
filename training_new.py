@@ -28,65 +28,65 @@ def get_networks(shape, load_model=False, path=None):
 
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
-def train_all(orig, remix, val_src, val_trgt, alpha = 0, beta = 10, gamma = 10, delta = 3):
-    orig1, orig2, orig3 = extract_image(orig)
-    remix1, remix2, remix3 = extract_image(remix)
-    valid1, valid2, valid3 = extract_image(val_src)
+def train_all(train_src, train_trgt, val_src, val_trgt, alpha = 0, beta = 10, gamma = 10, delta = 3):
+    src1, src2, src3 = extract_image(train_src)
+    trgt1, trgt2, trgt3 = extract_image(train_trgt)
+    vals1, vals2, vals3 = extract_image(val_src)
     valr1, valr2, valr3 = extract_image(val_trgt)
 
     with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc:  # tf.GradientTape as tape_siam:
         # translating A to B
-        gen_orig1 = gen(orig1, training=True)
-        gen_orig2 = gen(orig2, training=True)
-        gen_orig3 = gen(orig3, training=True)
+        gen_src1 = gen(src1, training=True)
+        gen_src2 = gen(src2, training=True)
+        gen_src3 = gen(src3, training=True)
 
         # identity mapping B to B                                                        COMMENT THESE 3 LINES IF THE IDENTITY LOSS TERM IS NOT NEEDED
-        gen_remix1 = gen(remix1, training=True)
-        gen_remix2 = gen(remix2, training=True)
-        gen_remix3 = gen(remix3, training=True)
+        gen_trgt1 = gen(trgt1, training=True)
+        gen_trgt2 = gen(trgt2, training=True)
+        gen_trgt3 = gen(trgt3, training=True)
 
         # concatenate/assemble converted spectrograms
-        gen_orig = assemble_image([gen_orig1, gen_orig2, gen_orig3])
-        gen_remix = assemble_image([gen_remix1, gen_remix2, gen_remix3])
+        gen_src = assemble_image([gen_src1, gen_src2, gen_src3])
+        gen_trgt = assemble_image([gen_trgt1, gen_trgt2, gen_trgt3])
 
         # feed concatenated spectrograms to critic
-        critic_gen_orig = critic(gen_orig, training=True)
-        critic_remix = critic(remix, training=True)
+        d_gen_src = critic(gen_src, training=True)
+        d_trgt = critic(train_trgt, training=True)
 
         # feed 2 pairs (A,G(A)) extracted spectrograms to Siamese
-        siam_gen_orig1 = siam(gen_orig1, training=True)
-        siam_gen_orig3 = siam(gen_orig3, training=True)
-        siam_orig1 = siam(orig1, training=True)
-        siam_orig3 = siam(orig3, training=True)
+        siam_gen_src1 = siam(gen_src1, training=True)
+        siam_gen_src2 = siam(gen_src3, training=True)
+        siam_src1 = siam(src1, training=True)
+        siam_src3 = siam(src3, training=True)
 
-        gen_valid1 = gen(valid1, training=False)
-        gen_valid2 = gen(valid2, training=False)
-        gen_valid3 = gen(valid3, training=False)
-        gen_valid = assemble_image([gen_valid1, gen_valid2, gen_valid3])
+        gen_vals1 = gen(vals1, training=False)
+        gen_vals2 = gen(vals2, training=False)
+        gen_vals3 = gen(vals3, training=False)
+        gen_vals = assemble_image([gen_vals1, gen_vals2, gen_vals3])
 
         gen_valr1 = gen(valr1, training=False)
         gen_valr2 = gen(valr2, training=False)
         gen_valr3 = gen(valr3, training=False)
         gen_valr = assemble_image([gen_valr1, gen_valr2, gen_valr3])
 
-        siam_gen_valid1 = siam(gen_valid1, training=False)
-        siam_gen_valid3 = siam(gen_valid3, training=False)
-        siam_valid1 = siam(valid1, training=False)
-        siam_valid3 = siam(valid3, training=False)
+        siam_gen_vals1 = siam(gen_vals1, training=False)
+        siam_gen_vals3 = siam(gen_vals3, training=False)
+        siam_vals1 = siam(vals1, training=False)
+        siam_vals3 = siam(vals3, training=False)
 
-        critic_gen_valid = critic(gen_valid, training=False)
+        d_gen_vals = critic(gen_vals, training=False)
 
-        loss_d = L_d(critic_remix, critic_gen_orig)
+        loss_d = L_d(d_trgt, d_gen_src)
 
-        loss_s_margin = L_s_margin(delta, orig1, orig3, siam_orig1, siam_orig3)
-        l_travel = L_travel(siam_orig1, siam_orig3, siam_gen_orig1, siam_gen_orig3)
-        lossgtot = L_g(alpha, beta, critic_gen_orig, remix, gen_remix, l_travel)
-        loss_g_train = L_g_noID(beta, critic_gen_orig, l_travel)
+        loss_s_margin = L_s_margin(delta, src1, src3, siam_src1, siam_src3)
+        l_travel = L_travel(siam_src1, siam_src3, siam_gen_src1, siam_gen_src2)
+        lossgtot = L_g(alpha, beta, d_gen_src, train_trgt, gen_trgt, l_travel)
+        loss_g_train = L_g_noID(beta, d_gen_src, l_travel)
         loss_s = L_s(beta, gamma, l_travel, loss_s_margin)
 
-        l_travel_val = L_travel(siam_valid1, siam_valid3, siam_gen_valid1, siam_gen_valid3)
-        loss_g_valid = L_g_noID(beta, critic_gen_valid, l_travel_val)
-        # loss_g_valid = L_g_full(0.5, 10, critic_gen_valid, validation_remix, gen_valr, gen_valid1, gen_valid2, siam_gen_valid1, siam_gen_valid3)
+        l_travel_val = L_travel(siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
+        loss_g_valid = L_g_noID(beta, d_gen_vals, l_travel_val)
+         #loss_g_valid = L_g_full(0.5, 10, d_gen_vals, validation_remix, gen_valr, gen_vals1, gen_vals2, siam_gen_vals1, siam_gen_vals3)
 
     grad_gen = tape_gen.gradient(loss_g_train, gen.trainable_variables + siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gen.trainable_variables + siam.trainable_variables))
