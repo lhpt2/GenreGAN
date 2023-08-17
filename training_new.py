@@ -208,7 +208,10 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
                 log(time.strftime("%H:%M:%S ", time.localtime()), end='')
                 # log epoch/epochs batch_nr d_loss d_loss_r d_loss_f g_loss s_loss id_loss lr
                 msgstr = f'[Epoch {epoch}/{epochs}] [Batch {batch_nr}] '
-                msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -temp_count, 4)
+                if len(d_list) == 1:
+                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, 0, 4)
+                else:
+                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -temp_count, 4)
                 msgstr += f'[LR: {lr}]'
                 log(msgstr)
                 temp_count = 0
@@ -259,19 +262,20 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
     # end train
 
-GL_SAVE = '../Ergebnisse/Versuch04_2_0_LossPaperNoID/'
+GL_SAVE = '../Ergebnisse/Versuch05_3_0_LossPaper/'
 GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
 
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
 
-    #dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
-    #dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+    # TRAINING SETUP
+    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
+    dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # DEBUGGING SETUP
-    dsval = dsval.repeat(500).prefetch(AUTOTUNE)
-    dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+    #dsval = dsval.repeat(500).prefetch(AUTOTUNE)
+    #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
 
     # do things: get networks with proper size (shape should be changed)
