@@ -72,10 +72,10 @@ def testgena(aspec):
    return np.array(dsa, dtype=np.float32)
 
 def cut4gen(spec):
-   return tf.reshape(spec, [3, 192, 192, 1])
+   return tf.reshape(spec, [3, 192, GL_SHAPE, 1])
 
 def uncut4gen(spec):
-   return tf.squeeze(tf.reshape(spec, [1, 192, 576, 1]))
+   return tf.squeeze(tf.reshape(spec, [1, 192, 3 * GL_SHAPE, 1]))
 
 """ Show results mid-training """
 def save_test_image_full(path, gen, aspec):
