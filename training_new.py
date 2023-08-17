@@ -31,8 +31,8 @@ def get_networks(shape, load_model=False, path=None):
 def train_all(train_src, train_trgt, val_src, val_trgt):
     src1, src2, src3 = extract_image(train_src)
     trgt1, trgt2, trgt3 = extract_image(train_trgt)
-    vals1, vals2, vals3 = extract_image(val_src)
-    valr1, valr2, valr3 = extract_image(val_trgt)
+    vals1, vals2, vals3 = extract_image(tf.expand_dims(val_src,0))
+    valr1, valr2, valr3 = extract_image(tf.expand_dims(val_trgt, 0))
 
     with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc:  # tf.GradientTape as tape_siam:
         # translating src (A) to target' (B')
@@ -77,7 +77,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         siam_vals3 = gl_siam(vals3, training=False)
 
         # feed generated validation to discriminator
-        d_gen_vals = gl_discr(gen_vals, training=False)
+        d_gen_vals = gl_discr(tf.expand_dims(tf.expand_dims(gen_vals, -1), 0), training=False)
 
         # calculate dloss
         loss_d, loss_df, loss_dr = L_d(d_trgt, d_gen_src)
@@ -233,8 +233,10 @@ if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
 
-    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
-    dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+    #dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
+    #dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+    dsval = dsval.repeat(500).prefetch(AUTOTUNE)
+    dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     #dsval = dsval.shuffle(10000).prefetch(AUTOTUNE)
     #dstrain = dstrain.shuffle(10000).prefetch(AUTOTUNE)
@@ -246,6 +248,7 @@ if __name__ == "__main__":
     #print(critic.summary())
     #print(siam.summary())
     print(getconstants())
+    log(getconstants())
 
     # start training
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
