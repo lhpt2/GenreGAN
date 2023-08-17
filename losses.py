@@ -77,13 +77,26 @@ def L_g_full(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s
 # final losses
 
 def L_d(d_target, d_g_source):
-    return -tf.reduce_mean(tf.minimum(0.0, -1 + d_target)) - tf.reduce_mean(tf.minimum(0.0, -1 - d_g_source))
+    dr_loss = L_d_real(d_target)
+    df_loss = L_d_fake(d_g_source)
+    return dr_loss + df_loss, df_loss, dr_loss
+
+def L_d_fake(d_g_source):
+    return tf.reduce_mean(tf.maximum(0., 1 + d_g_source))
+    #return -tf.reduce_mean(tf.minimum(0., -1 - d_g_source))
+
+def L_d_real(d_target):
+    return tf.reduce_mean(tf.maximum(0., 1 - d_target))
+    #return -tf.reduce_mean(tf.minimum(0., -1 + d_target))
 
 def L_s(beta: float, gamma:float, l_travel, l_s_margin: float):
     return beta * l_travel + gamma * l_s_margin
 
-def L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, l_travel: float):
-    return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * l_travel
+#def L_g(alpha: float, beta: float, d_g_src, trgt, g_trgt, l_travel: float):
+#    return L_g_adv(d_g_src) + alpha * L_g_id(trgt, g_trgt) + beta * l_travel
+
+def L_g(alpha: float, beta: float, d_g_src, l_travel: float, l_id: float):
+    return L_g_adv(d_g_src) + alpha * l_id + beta * l_travel
 
 def L_g_noID(beta: float, d_g_src, l_travel: float):
     return L_g_adv(d_g_src) + beta * l_travel

@@ -8,7 +8,7 @@ from keras.models import Model
 from tensorflow.python.data import AUTOTUNE
 
 from architecture import extract_image, assemble_image
-from losses import L_d, L_s_margin, L_g_noID, L_s, L_travel, L_g
+from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id
 from testing_network import save_end
 
 from constants import *
@@ -28,96 +28,114 @@ def get_networks(shape, load_model=False, path=None):
 
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
-def train_all(train_src, train_trgt, val_src, val_trgt, alpha = 0, beta = 10, gamma = 10, delta = 3):
+def train_all(train_src, train_trgt, val_src, val_trgt):
     src1, src2, src3 = extract_image(train_src)
     trgt1, trgt2, trgt3 = extract_image(train_trgt)
     vals1, vals2, vals3 = extract_image(val_src)
     valr1, valr2, valr3 = extract_image(val_trgt)
 
     with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc:  # tf.GradientTape as tape_siam:
-        # translating A to B
-        gen_src1 = gen(src1, training=True)
-        gen_src2 = gen(src2, training=True)
-        gen_src3 = gen(src3, training=True)
-
-        # identity mapping B to B                                                        COMMENT THESE 3 LINES IF THE IDENTITY LOSS TERM IS NOT NEEDED
-        gen_trgt1 = gen(trgt1, training=True)
-        gen_trgt2 = gen(trgt2, training=True)
-        gen_trgt3 = gen(trgt3, training=True)
-
-        # concatenate/assemble converted spectrograms
+        # translating src (A) to target' (B')
+        gen_src1 = gl_gen(src1, training=True)
+        gen_src2 = gl_gen(src2, training=True)
+        gen_src3 = gl_gen(src3, training=True)
         gen_src = assemble_image([gen_src1, gen_src2, gen_src3])
+
+        # translating target (B) to  G(b) from G(B) for identity loss
+        # identity mapping B to B                                                        COMMENT THESE 3 LINES IF THE IDENTITY LOSS TERM IS NOT NEEDED
+        gen_trgt1 = gl_gen(trgt1, training=True)
+        gen_trgt2 = gl_gen(trgt2, training=True)
+        gen_trgt3 = gl_gen(trgt3, training=True)
         gen_trgt = assemble_image([gen_trgt1, gen_trgt2, gen_trgt3])
 
         # feed concatenated spectrograms to critic
-        d_gen_src = critic(gen_src, training=True)
-        d_trgt = critic(train_trgt, training=True)
+        d_gen_src = gl_discr(gen_src, training=True)
+        d_trgt = gl_discr(train_trgt, training=True)
 
         # feed 2 pairs (A,G(A)) extracted spectrograms to Siamese
-        siam_gen_src1 = siam(gen_src1, training=True)
-        siam_gen_src2 = siam(gen_src3, training=True)
-        siam_src1 = siam(src1, training=True)
-        siam_src3 = siam(src3, training=True)
+        siam_gen_src1 = gl_siam(gen_src1, training=True)
+        siam_gen_src3 = gl_siam(gen_src3, training=True)
+        siam_src1 = gl_siam(src1, training=True)
+        siam_src3 = gl_siam(src3, training=True)
 
-        gen_vals1 = gen(vals1, training=False)
-        gen_vals2 = gen(vals2, training=False)
-        gen_vals3 = gen(vals3, training=False)
+
+        # feed validation samples to generator
+        gen_vals1 = gl_gen(vals1, training=False)
+        gen_vals2 = gl_gen(vals2, training=False)
+        gen_vals3 = gl_gen(vals3, training=False)
         gen_vals = assemble_image([gen_vals1, gen_vals2, gen_vals3])
 
-        gen_valr1 = gen(valr1, training=False)
-        gen_valr2 = gen(valr2, training=False)
-        gen_valr3 = gen(valr3, training=False)
+        gen_valr1 = gl_gen(valr1, training=False)
+        gen_valr2 = gl_gen(valr2, training=False)
+        gen_valr3 = gl_gen(valr3, training=False)
         gen_valr = assemble_image([gen_valr1, gen_valr2, gen_valr3])
 
-        siam_gen_vals1 = siam(gen_vals1, training=False)
-        siam_gen_vals3 = siam(gen_vals3, training=False)
-        siam_vals1 = siam(vals1, training=False)
-        siam_vals3 = siam(vals3, training=False)
+        # feed validation samples to siamese
+        siam_gen_vals1 = gl_siam(gen_vals1, training=False)
+        siam_gen_vals3 = gl_siam(gen_vals3, training=False)
+        siam_vals1 = gl_siam(vals1, training=False)
+        siam_vals3 = gl_siam(vals3, training=False)
 
-        d_gen_vals = critic(gen_vals, training=False)
+        # feed generated validation to discriminator
+        d_gen_vals = gl_discr(gen_vals, training=False)
 
-        loss_d = L_d(d_trgt, d_gen_src)
+        # calculate dloss
+        loss_d, loss_df, loss_dr = L_d(d_trgt, d_gen_src)
 
-        loss_s_margin = L_s_margin(delta, src1, src3, siam_src1, siam_src3)
-        l_travel = L_travel(siam_src1, siam_src3, siam_gen_src1, siam_gen_src2)
-        lossgtot = L_g(alpha, beta, d_gen_src, train_trgt, gen_trgt, l_travel)
-        loss_g_train = L_g_noID(beta, d_gen_src, l_travel)
-        loss_s = L_s(beta, gamma, l_travel, loss_s_margin)
+        # calculate margin, siamese and travel loss
+        loss_s_margin = L_s_margin(GL_DELTA, src1, src3, siam_src1, siam_src3)
+        l_travel = L_travel(siam_src1, siam_src3, siam_gen_src1, siam_gen_src3)
+        loss_s = L_s(GL_BETA, GL_GAMMA, l_travel, loss_s_margin)
+
+        # calculate gloss
+        l_id = L_g_id(train_trgt, gen_trgt)
+        loss_g = L_g(GL_ALPHA, GL_BETA, d_gen_src, l_travel, l_id)
 
         l_travel_val = L_travel(siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
-        loss_g_valid = L_g_noID(beta, d_gen_vals, l_travel_val)
-         #loss_g_valid = L_g_full(0.5, 10, d_gen_vals, validation_remix, gen_valr, gen_vals1, gen_vals2, siam_gen_vals1, siam_gen_vals3)
+        l_id_val = L_g_id(val_trgt, gen_valr)
+        loss_g_val = L_g(GL_ALPHA, GL_BETA, d_gen_vals, l_travel_val, l_id_val)
 
-    grad_gen = tape_gen.gradient(loss_g_train, gen.trainable_variables + siam.trainable_variables)
-    gl_opt_gen.apply_gradients(zip(grad_gen, gen.trainable_variables + siam.trainable_variables))
+    grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
+    gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
 
-    grad_disc = tape_disc.gradient(loss_d, critic.trainable_variables)
-    gl_opt_disc.apply_gradients(zip(grad_disc, critic.trainable_variables))
+    grad_disc = tape_disc.gradient(loss_d, gl_discr.trainable_variables)
+    gl_opt_disc.apply_gradients(zip(grad_disc, gl_discr.trainable_variables))
 
     # grad_siam = tape_siam.gradient(loss_s, siam.trainable_variables)
     # opt_siam.apply_gradients(zip(grad_siam, siam.trainable_variables))
 
-    return loss_d, loss_g_train, loss_g_valid, loss_s
+    return {
+                "gloss": loss_g,
+                "dloss": loss_d,
+                "dfloss": loss_df,
+                "drloss": loss_dr,
+                "sloss": loss_s,
+                "idloss": l_id,
+                "vloss": loss_g_val
+            }
 
 def train_d(sample_src, sample_trgt):
     src1, src2, src3 = extract_image(sample_src)
 
     with tf.GradientTape() as tape_disc:
-        g_orig1 = gen(src1, training=True)
-        g_orig2 = gen(src2, training=True)
-        g_orig3 = gen(src3, training=True)
-        g_src = assemble_image([g_orig1, g_orig2, g_orig3])
+        g_src1 = gl_gen(src1, training=True)
+        g_src2 = gl_gen(src2, training=True)
+        g_src3 = gl_gen(src3, training=True)
+        g_src = assemble_image([g_src1, g_src2, g_src3])
 
-        d_g_src = critic(g_src, training=True)
-        d_trgt = critic(sample_trgt, training=True)
+        d_g_src = gl_discr(g_src, training=True)
+        d_trgt = gl_discr(sample_trgt, training=True)
 
-        loss_d = L_d(d_trgt, d_g_src)
-        #loss_d = (loss_dr + loss_df) / 2.
+        loss_d, loss_df, loss_dr = L_d(d_trgt, d_g_src)
 
-    grad_disc = tape_disc.gradient(loss_d, critic.trainable_variables)
-    gl_opt_disc.apply_gradients(zip(grad_disc, critic.trainable_variables))
+    grad_disc = tape_disc.gradient(loss_d, gl_discr.trainable_variables)
+    gl_opt_disc.apply_gradients(zip(grad_disc, gl_discr.trainable_variables))
 
-    return loss_d
+    return {
+                "dloss": loss_d,
+                "dfloss": loss_df,
+                "drloss": loss_dr,
+            }
 
 def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300, batch_size=16, lr=0.0001, n_save=6,
           gen_update=5, startep=0):
@@ -151,14 +169,15 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             # Train generator ever gen_update batches
             val = val_pool.next()
             if (batch_nr % gen_update) == 0:
-                losses = train_all(sample_src, sample_trgt, val[1], val[2], GL_ALPHA, GL_BETA, GL_GAMMA, GL_DELTA)
+                losses_dict = train_all(sample_src, sample_trgt, val[1], val[2])
+                lossprint.append_all(losses_dict)
             else:
-                losses = train_d(sample_src, sample_trgt)
+                losses_dict = train_d(sample_src, sample_trgt)
+                lossprint.append_disc(losses_dict)
 
             # update losses and counters
             temp_count += 1
             ep_count += 1
-            lossprint.append(losses)
 
             # Print status every 100 batches
             if batch_nr % 100 == 0:
@@ -181,7 +200,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
         # save weights every n_save epochs
         ll_dict = lossprint.get_mean(-n_save * ep_count)
         save_end(epoch, ll_dict['gloss'], ll_dict['dfloss'],
-             ll_dict['idloss'], gen, critic, siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
+                 ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
 
         # print losses and write to loss_file
         ll_dict = lossprint.get_mean(-ep_count)
@@ -196,7 +215,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
     # save weights every n_save epochs
     ll_dict = lossprint.get_mean_all()
     save_end(epochs - 1, ll_dict['gloss'], ll_dict['dfloss'],
-            ll_dict['idloss'], gen, critic, siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
+             ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
 
     # print losses and write to loss_file
     ll_dict = lossprint.get_mean(-ep_count)
@@ -214,18 +233,19 @@ if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
 
-    dsval = dsval.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     #dsval = dsval.shuffle(10000).prefetch(AUTOTUNE)
     #dstrain = dstrain.shuffle(10000).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
-    gen, critic, siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
+    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
 
-    print(gen.summary())
-    print(critic.summary())
-    print(siam.summary())
+    #print(gen.summary())
+    #print(critic.summary())
+    #print(siam.summary())
+    print(getconstants())
 
     # start training
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)

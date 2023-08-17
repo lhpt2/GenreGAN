@@ -48,12 +48,14 @@ def extract_image(im):
   im1 = Cropping2D(((0,0), (0, 2*(im.shape[2] // 3))))(im)
   im2 = Cropping2D(((0,0), (im.shape[2] // 3, im.shape[2] // 3)))(im)
   im3 = Cropping2D(((0,0), (2 * (im.shape[2] // 3), 0)))(im)
-  return im1,im2,im3
+
+  return im1, im2, im3
 
 """ Assemble function: concatenating spectrograms """
 def assemble_image(lsim):
-  im1,im2,im3 = lsim
-  imh = Concatenate(2)([im1,im2,im3])
+  im1, im2, im3 = lsim
+  imh = Concatenate(2)([im1, im2, im3])
+  imh = tf.squeeze(imh)
   return imh
 
 """ U-NET style architecture """
