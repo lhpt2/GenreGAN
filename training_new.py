@@ -150,6 +150,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
     val_pool = dsval.as_numpy_iterator()
 
     lossprint = LPrint()
+    csvfile.write(f'epoch,{lossprint.header()},lr')
 
     # epoch count for integrated loss
     ep_count = 0
@@ -200,7 +201,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
         # save weights every n_save epochs
         ll_dict = lossprint.get_mean(-n_save * ep_count)
         save_end(epoch, ll_dict['gloss'], ll_dict['dfloss'],
-                 ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
+                 ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).as_numpy_iterator().next()[1], n_save=n_save, save_path=GL_SAVE)
 
         # print losses and write to loss_file
         ll_dict = lossprint.get_mean(-ep_count)
@@ -249,6 +250,7 @@ if __name__ == "__main__":
     #print(siam.summary())
     print(getconstants())
     log(getconstants())
+
 
     # start training
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
