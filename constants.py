@@ -18,6 +18,15 @@ GL_BETA = 10.
 GL_GAMMA = 10.
 GL_DELTA = 2.            #constant for siamese loss
 
+def getconstants():
+   msgstr = f"hop size: {GL_HOP} \n"
+   msgstr += f"shape: {GL_SHAPE} \n"
+   msgstr += f"Siamese out len: {GL_VECLEN} \n"
+   msgstr += f"batch size: {GL_BS} \n"
+   msgstr += f"Sample rate: {GL_SR} \n"
+   msgstr += f"net params: alpha: {GL_ALPHA}, beta: {GL_BETA}, gamma: {GL_GAMMA}, delta: {GL_DELTA} \n"
+   return msgstr
+
 logfile = open("log.txt", "a")
 GL_STARTTIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 logfile.write("######### " + GL_STARTTIME + " Starting training" + " #########\n")
