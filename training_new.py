@@ -76,6 +76,10 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         siam_vals1 = gl_siam(vals1, training=False)
         siam_vals3 = gl_siam(vals3, training=False)
 
+        ##################
+        # LOSS CALCULATION
+        ##################
+
         # feed generated validation to discriminator
         d_gen_vals = gl_discr(tf.expand_dims(tf.expand_dims(gen_vals, -1), 0), training=False)
 
@@ -83,17 +87,17 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         loss_d, loss_df, loss_dr = L_d(d_trgt, d_gen_src)
 
         # calculate margin, siamese and travel loss
-        loss_s_margin = L_s_margin(GL_DELTA, src1, src3, siam_src1, siam_src3)
-        l_travel = L_travel(siam_src1, siam_src3, siam_gen_src1, siam_gen_src3)
-        loss_s = L_s(GL_BETA, GL_GAMMA, l_travel, loss_s_margin)
+        loss_s_margin = L_s_margin(GL_GAMMA, GL_DELTA, src1, src3, siam_src1, siam_src3)
+        l_travel = L_travel(GL_BETA, siam_src1, siam_src3, siam_gen_src1, siam_gen_src3)
+        loss_s = L_s(l_travel, loss_s_margin)
 
         # calculate gloss
-        l_id = L_g_id(train_trgt, gen_trgt)
-        loss_g = L_g(GL_ALPHA, GL_BETA, d_gen_src, l_travel, l_id)
+        l_id = L_g_id(GL_ALPHA, train_trgt, gen_trgt)
+        loss_g = L_g(d_gen_src, l_travel, l_id)
 
-        l_travel_val = L_travel(siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
-        l_id_val = L_g_id(val_trgt, gen_valr)
-        loss_g_val = L_g(GL_ALPHA, GL_BETA, d_gen_vals, l_travel_val, l_id_val)
+        l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
+        l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
+        loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val)
 
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
@@ -104,15 +108,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
     # grad_siam = tape_siam.gradient(loss_s, siam.trainable_variables)
     # opt_siam.apply_gradients(zip(grad_siam, siam.trainable_variables))
 
-    return {
-                "gloss": loss_g,
-                "dloss": loss_d,
-                "dfloss": loss_df,
-                "drloss": loss_dr,
-                "sloss": loss_s,
-                "idloss": l_id,
-                "vloss": loss_g_val
-            }
+    return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
 def train_d(sample_src, sample_trgt):
     src1, src2, src3 = extract_image(sample_src)
@@ -131,30 +127,53 @@ def train_d(sample_src, sample_trgt):
     grad_disc = tape_disc.gradient(loss_d, gl_discr.trainable_variables)
     gl_opt_disc.apply_gradients(zip(grad_disc, gl_discr.trainable_variables))
 
-    return {
-                "dloss": loss_d,
-                "dfloss": loss_df,
-                "drloss": loss_dr,
-            }
+    return loss_d, loss_df, loss_dr
+
+def make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, back: int, decimals: int = 9):
+    msg = f'[D loss: {str(np.mean(d_list[-back:], axis=0))}] '
+    msg += f'[G loss: {str(np.mean(g_list[-back:], axis=0))}] '
+    msg += f'[S loss: {str(np.mean(s_list[-back:], axis=0))}] '
+    msg += f'[ID loss: {str(np.mean(id_list[-back:], axis=0))}] '
+    msg += f'[Val loss: {str(np.mean(val_list[-back:], axis=0))}] '
+    return msg
+
+def make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, back: int, decimals: int = 9):
+    msgstr = f'{str(np.mean(d_list[-back:]))[:decimals]},{str(np.mean(dr_list[-back:]))[:decimals]},{str(np.mean(df_list[-back:]))[:decimals]},'
+    msgstr += f'{str(np.mean(g_list[-back:]))[:decimals]},'
+    msgstr += f'{str(np.mean(s_list[-back:]))[:decimals]},'
+    msgstr += f'{str(np.mean(id_list[-back:]))[:decimals]},'
+    msgstr += f'{str(np.mean(val_list[-back:]))[:decimals]}'
+    return msgstr
+
+
+def csvheader():
+    return 'epoch,dloss,drloss,dfloss,gloss,sloss,idloss,vloss,lr'
+
 
 def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300, batch_size=16, lr=0.0001, n_save=6,
           gen_update=5, startep=0):
     # LOGGING
     csvfile = open(f"{GL_SAVE}/{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')}_losses.txt", "w")
+    csvfile.write(csvheader())
 
     # UPDATE learning rate
     gl_opt_gen.learning_rate = lr
     gl_opt_disc.learning_rate = lr
 
-    # GET validation iterator
-    val_pool = dsval.as_numpy_iterator()
-
-    lossprint = LPrint()
-    csvfile.write(f'epoch,{lossprint.header()},lr')
+    d_list = []
+    df_list = []
+    dr_list = []
+    g_list = []
+    s_list = []
+    id_list = []
+    val_list = []
 
     # epoch count for integrated loss
     ep_count = 0
     temp_count = 0
+
+    # GET validation iterator
+    val_pool = dsval.as_numpy_iterator()
 
     # Training Loop epochs
     for epoch in range(startep, epochs):
@@ -170,23 +189,28 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             # Train generator ever gen_update batches
             val = val_pool.next()
             if (batch_nr % gen_update) == 0:
-                losses_dict = train_all(sample_src, sample_trgt, val[1], val[2])
-                lossprint.append_all(losses_dict)
+                loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = train_all(sample_src, sample_trgt, val[1], val[2])
             else:
-                losses_dict = train_d(sample_src, sample_trgt)
-                lossprint.append_disc(losses_dict)
+                loss_d, loss_df, loss_dr = train_d(sample_src, sample_trgt)
 
-            # update losses and counters
-            temp_count += 1
+            # append losses
+            d_list.append(loss_d)
+            df_list.append(loss_df)
+            dr_list.append(loss_dr)
+            g_list.append(loss_g)
+            s_list.append(loss_s)
+            id_list.append(l_id)
+            val_list.append(loss_g_val)
             ep_count += 1
+            temp_count += 1
 
             # Print status every 100 batches
             if batch_nr % 100 == 0:
                 log(time.strftime("%H:%M:%S ", time.localtime()), end='')
                 # log epoch/epochs batch_nr d_loss d_loss_r d_loss_f g_loss s_loss id_loss lr
                 msgstr = f'[Epoch {epoch}/{epochs}] [Batch {batch_nr}] '
-                msgstr += lossprint.to_str(-temp_count)
-                msgstr += f'[LR: {lr}]\n'
+                msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -temp_count, 4)
+                msgstr += f'[LR: {lr}]'
                 log(msgstr)
                 temp_count = 0
 
@@ -198,34 +222,41 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
         log(f'Time for epoch {epoch}: {int(time.time() - before)}')
         log(f'Time/Batch {(time.time() - before) / nbatch}')
 
-        # save weights every n_save epochs
-        ll_dict = lossprint.get_mean(-n_save * ep_count)
-        save_end(epoch, ll_dict['gloss'], ll_dict['dfloss'],
-                 ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).as_numpy_iterator().next()[1], n_save=n_save, save_path=GL_SAVE)
-
         # print losses and write to loss_file
-        ll_dict = lossprint.get_mean(-ep_count)
-        losses_csv = f'{epoch},{lossprint.to_csv_part(-ep_count)},{lr}\n'
-        log(f'Mean D loss: {ll_dict["dloss"]} Mean G loss: {ll_dict["gloss"]} Mean ID loss: {ll_dict["idloss"]}, Mean S loss: {ll_dict["sloss"]}')
+        save_end(epoch,
+                 np.mean(g_list[-n_save * ep_count:], axis=0),
+                 np.mean(d_list[-n_save * ep_count:], axis=0),
+                 np.mean(s_list[-n_save * ep_count:], axis=0),
+                 gl_gen, gl_discr, gl_siam, dstrain, n_save=n_save, save_path=GL_SAVE)
+
+        log(f'Mean D loss: {np.mean(d_list[-ep_count:], axis=0)} Mean G loss: {np.mean(g_list[-ep_count:], axis=0)} Mean Val loss: {np.mean(val_list[-ep_count:], axis=0)} Mean ID loss: {np.mean(id_list[-ep_count:], axis=0)}, Mean S loss: {np.mean(s_list[-ep_count:], axis=0)}')
+
+        losses_csv = f'{epoch},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -ep_count, 6)},{lr}\n'
         csvfile.write(losses_csv)
-        #csvfile.write(f'{epoch},{np.mean(df_list[-ep_count:], axis=0)},{np.mean(dr_list[-ep_count:], axis=0)},{np.mean(g_list[-ep_count:], axis=0)},{np.mean(id_list[-ep_count:], axis=0)},{lr},{np.mean(val_list[-ep_count:])}\n')
-        ep_count = 0
+
         logfile.flush()
         csvfile.flush()
+        ep_count = 0
 
-    # save weights every n_save epochs
-    ll_dict = lossprint.get_mean_all()
-    save_end(epochs - 1, ll_dict['gloss'], ll_dict['dfloss'],
-             ll_dict['idloss'], gl_gen, gl_discr, gl_siam, ds_train.shuffle(5).take(1)[1], n_save=n_save, save_path=GL_SAVE)
+    # end for epochs
 
-    # print losses and write to loss_file
-    ll_dict = lossprint.get_mean(-ep_count)
-    losses_csv = f'{epochs - 1},{lossprint.to_csv_part(-ep_count)},{lr}\n'
-    log(f'Mean D loss: {ll_dict["dloss"]} Mean G loss: {ll_dict["gloss"]} Mean ID loss: {ll_dict["idloss"]}, Mean S loss: {ll_dict["sloss"]}')
+    # print FINAL losses and write to loss file
+    save_end(epochs - 1,
+             np.mean(g_list[-n_save * ep_count:], axis=0),
+             np.mean(d_list[-n_save * ep_count:], axis=0),
+             np.mean(s_list[-n_save * ep_count:], axis=0),
+             gl_gen, gl_discr, gl_siam, dstrain, n_save=n_save, save_path=GL_SAVE)
+
+
+    log(f'Mean D loss: {np.mean(d_list[-ep_count:], axis=0)} Mean G loss: {np.mean(g_list[-ep_count:], axis=0)} Mean Val loss: {np.mean(val_list[-ep_count:], axis=0)} Mean ID loss: {np.mean(id_list[-ep_count:], axis=0)}, Mean S loss: {np.mean(s_list[-ep_count:], axis=0)}')
+
+    losses_csv = f'{epochs - 1},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -ep_count, 6)},{lr}\n'
     csvfile.write(losses_csv)
-    #csvfile.write(f'{epoch},{np.mean(df_list[-ep_count:], axis=0)},{np.mean(dr_list[-ep_count:], axis=0)},{np.mean(g_list[-ep_count:], axis=0)},{np.mean(id_list[-ep_count:], axis=0)},{lr},{np.mean(val_list[-ep_count:])}\n')
+
     logfile.flush()
     csvfile.flush()
+
+    # end train
 
 GL_SAVE = '../Ergebnisse/Versuch04_2_0_LossPaperNoID/'
 GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
@@ -236,21 +267,16 @@ if __name__ == "__main__":
 
     #dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
     #dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+
+    # DEBUGGING SETUP
     dsval = dsval.repeat(500).prefetch(AUTOTUNE)
     dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
-    #dsval = dsval.shuffle(10000).prefetch(AUTOTUNE)
-    #dstrain = dstrain.shuffle(10000).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
     gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
 
-    #print(gen.summary())
-    #print(critic.summary())
-    #print(siam.summary())
-    print(getconstants())
     log(getconstants())
-
 
     # start training
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
