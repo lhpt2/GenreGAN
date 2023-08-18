@@ -28,6 +28,7 @@ def get_networks(shape, load_model=False, path=None):
 
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
+@tf.function
 def train_all(train_src, train_trgt, val_src, val_trgt):
     src1, src2, src3 = extract_image(train_src)
     trgt1, trgt2, trgt3 = extract_image(train_trgt)
@@ -110,6 +111,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
+@tf.function
 def train_d(sample_src, sample_trgt):
     src1, src2, src3 = extract_image(sample_src)
 
@@ -169,7 +171,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
     # epoch count for integrated loss
     batch_count = 0
     final_batch_c = 0
-    temp_count = 0
+    log_count = 0
 
     # GET validation iterator
     val_pool = dsval.as_numpy_iterator()
@@ -201,7 +203,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             id_list.append(l_id)
             val_list.append(loss_g_val)
             batch_count += 1
-            temp_count += 1
+            log_count += 1
 
             # Print status every 100 batches
             if batch_nr % 100 == 0:
@@ -211,10 +213,11 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
                 if len(d_list) == 1:
                     msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, 0, 4)
                 else:
-                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -temp_count, 4)
+                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -log_count, 4)
                 msgstr += f'[LR: {lr}]'
                 log(msgstr)
-                temp_count = 0
+                # set log_count 0 after log
+                log_count = 0
 
             nbatch = batch_nr
 
