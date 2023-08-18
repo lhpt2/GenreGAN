@@ -233,9 +233,9 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
         # print losses and write to loss_file
         if epoch % n_save == 0:
-            gloss = np.mean(g_list[-n_save * nbatches_in_ds:], axis=0),
-            dloss = np.mean(d_list[-n_save * nbatches_in_ds:], axis=0),
-            sloss = np.mean(s_list[-n_save * nbatches_in_ds:], axis=0),
+            gloss = float(np.mean(g_list[-n_save * nbatches_in_ds:], axis=0)),
+            dloss = float(np.mean(d_list[-n_save * nbatches_in_ds:], axis=0)),
+            sloss = float(np.mean(s_list[-n_save * nbatches_in_ds:], axis=0)),
 
             save_end(epoch,
                      gloss,
