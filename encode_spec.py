@@ -5,7 +5,7 @@ import numpy as np
 
 import soundfile
 
-from preprocessing import db_spec_to_wave, wave_to_db_spec, load_single_audio
+from dataset_processing import db_spec_to_wave, wave_to_db_spec, load_single_audio
 
 if len(sys.argv) < 3:
     raise Exception("Give filename and samplerate as arguments")

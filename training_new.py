@@ -1,19 +1,14 @@
 import datetime
-from LPrint import LPrint
-
-import numpy as np
 import tensorflow as tf
+
 from keras.optimizers import Adam
-from keras.models import Model
 from tensorflow.python.data import AUTOTUNE
 
-from architecture import extract_image, assemble_image
 from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id
-from testing_network import save_end, save_test_image_full
-
+from testing_network import save_end
 from constants import *
-from dataset_processing import load_dsparts, save_spec_to_wv
-from architecture_v2 import load, build
+from dataset_processing import load_dsparts
+from architecture_v2 import load, build, extract_image, assemble_image
 
 def get_networks(shape, load_model=False, path=None):
     if not load_model:

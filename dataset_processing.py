@@ -69,6 +69,13 @@ def normalize(S):
     return np.clip((((S - GL_MIN_LEVEL_DB) / -GL_MIN_LEVEL_DB) * 2.) - 1., -1, 1)
 def denormalize(S):
     return (((np.clip(S, -1, 1)+1.)/2.) * -GL_MIN_LEVEL_DB) + GL_MIN_LEVEL_DB
+def wave_to_db_spec(wv, hop=192):
+    S = torch.Tensor(wv).view(1, -1)
+    S = melspecfunc(S)
+    S = np.array(torch.squeeze(S).detach().cpu())
+    S = librosa.power_to_db(S) - GL_REF_LEVEL_DB
+    return normalize(S)
+
 def db_spec_to_wave(S):
     S = denormalize(S) + GL_REF_LEVEL_DB
     S = librosa.db_to_power(S)

@@ -4,10 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from constants import GL_SR, GL_SHAPE, log, secs_to_bins, bins_to_secs
-from preprocessing import db_spec_to_wave, concat_specarray
-from architecture import get_networks
-
+from constants import GL_SR, GL_SHAPE, log, secs_to_bins
+from dataset_processing import db_spec_to_wave
+from training_new import get_networks
 
 def save_spec_to_wv(spec, filepath='./test.wav'):
    wv = db_spec_to_wave(spec)
