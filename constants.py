@@ -19,6 +19,7 @@ GL_GAMMA = 10.
 GL_DELTA = 0.7            #constant for siamese loss
 
 GL_SAVE = '../Ergebnisse/Versuch05_3_0_LossPaper/'
+#GL_SAVE = '../Ergebnisse/Versuch06_3_0_P'
 GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
 
 def getconstants():
