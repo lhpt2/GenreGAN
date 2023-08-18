@@ -35,7 +35,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
     vals1, vals2, vals3 = extract_image(tf.expand_dims(val_src,0))
     valr1, valr2, valr3 = extract_image(tf.expand_dims(val_trgt, 0))
 
-    with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc:  # tf.GradientTape as tape_siam:
+    with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc, tf.GradientTape() as tape_siam:
         # translating src (A) to target' (B')
         gen_src1 = gl_gen(src1, training=True)
         gen_src2 = gl_gen(src2, training=True)
@@ -106,8 +106,8 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
     grad_disc = tape_disc.gradient(loss_d, gl_discr.trainable_variables)
     gl_opt_disc.apply_gradients(zip(grad_disc, gl_discr.trainable_variables))
 
-    # grad_siam = tape_siam.gradient(loss_s, siam.trainable_variables)
-    # opt_siam.apply_gradients(zip(grad_siam, siam.trainable_variables))
+    grad_siam = tape_siam.gradient(loss_s, gl_siam.trainable_variables)
+    gl_opt_siam.apply_gradients(zip(grad_siam, gl_siam.trainable_variables))
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
@@ -131,30 +131,30 @@ def train_d(sample_src, sample_trgt):
 
     return loss_d, loss_df, loss_dr
 
-def make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, back: int, decimals: int = 9):
-    msg = f'[D loss: {str(np.mean(d_list[-back:], axis=0))}] '
-    msg += f'[G loss: {str(np.mean(g_list[-back:], axis=0))}] '
-    msg += f'[S loss: {str(np.mean(s_list[-back:], axis=0))}] '
-    msg += f'[ID loss: {str(np.mean(id_list[-back:], axis=0))}] '
-    msg += f'[Val loss: {str(np.mean(val_list[-back:], axis=0))}] '
+def make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, start: int, decimals: int = 9):
+    msg = f'[D loss: {str(np.mean(d_list[start:], axis=0))}] '
+    msg += f'[G loss: {str(np.mean(g_list[start:], axis=0))}] '
+    msg += f'[S loss: {str(np.mean(s_list[start:], axis=0))}] '
+    msg += f'[ID loss: {str(np.mean(id_list[start:], axis=0))}] '
+    msg += f'[Val loss: {str(np.mean(val_list[start:], axis=0))}] '
     return msg
 
-def make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, back: int, decimals: int = 9):
-    msgstr = f'{str(np.mean(d_list[-back:]))[:decimals]},{str(np.mean(dr_list[-back:]))[:decimals]},{str(np.mean(df_list[-back:]))[:decimals]},'
-    msgstr += f'{str(np.mean(g_list[-back:]))[:decimals]},'
-    msgstr += f'{str(np.mean(s_list[-back:]))[:decimals]},'
-    msgstr += f'{str(np.mean(id_list[-back:]))[:decimals]},'
-    msgstr += f'{str(np.mean(val_list[-back:]))[:decimals]}'
+def make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, start: int, decimals: int = 9):
+    msgstr = f'{str(np.mean(d_list[start:]))[:decimals]},{str(np.mean(dr_list[start:]))[:decimals]},{str(np.mean(df_list[start:]))[:decimals]},'
+    msgstr += f'{str(np.mean(g_list[start:]))[:decimals]},'
+    msgstr += f'{str(np.mean(s_list[start:]))[:decimals]},'
+    msgstr += f'{str(np.mean(id_list[start:]))[:decimals]},'
+    msgstr += f'{str(np.mean(val_list[start:]))[:decimals]}'
     return msgstr
 
 def csvheader():
     return 'epoch,dloss,drloss,dfloss,gloss,sloss,idloss,vloss,lr'
 
 def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300, batch_size=16, lr=0.0001, n_save=6,
-          gen_update=5, startep=0):
+          gen_update=5, startep=1, status_every_nbatch = 100):
     # LOGGING
     csvfile = open(f"{GL_SAVE}/{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')}_losses.txt", "w")
-    csvfile.write(csvheader())
+    csvfile.write(csvheader() + '\n')
 
     # UPDATE learning rate
     gl_opt_gen.learning_rate = lr
@@ -168,16 +168,22 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
     id_list = []
     val_list = []
 
+    nbatches_in_ds = ds_train.cardinality().numpy()
+
     # epoch count for integrated loss
-    batch_count = 0
-    final_batch_c = 0
-    log_count = 0
+    loss_g = 0
+    loss_d = 0
+    loss_df = 0
+    loss_dr = 0
+    loss_s = 0
+    l_id = 0
+    loss_g_val = 0
 
     # GET validation iterator
     val_pool = dsval.as_numpy_iterator()
 
     # Training Loop epochs
-    for epoch in range(startep, epochs):
+    for epoch in range(startep, epochs + 1):
         before = time.time()
 
         nbatch = 0
@@ -191,8 +197,10 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             val = val_pool.next()
             if (batch_nr % gen_update) == 0:
                 loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = train_all(sample_src, sample_trgt, val[1], val[2])
+                #loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = dummy_losses_all()
             else:
                 loss_d, loss_df, loss_dr = train_d(sample_src, sample_trgt)
+                #loss_d, loss_df, loss_dr = dummy_losses_d()
 
             # append losses
             d_list.append(loss_d)
@@ -202,26 +210,22 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             s_list.append(loss_s)
             id_list.append(l_id)
             val_list.append(loss_g_val)
-            batch_count += 1
-            log_count += 1
 
             # Print status every 100 batches
-            if batch_nr % 100 == 0:
+            if batch_nr % status_every_nbatch == 0:
                 log(time.strftime("%H:%M:%S ", time.localtime()), end='')
                 # log epoch/epochs batch_nr d_loss d_loss_r d_loss_f g_loss s_loss id_loss lr
                 msgstr = f'[Epoch {epoch}/{epochs}] [Batch {batch_nr}] '
-                if len(d_list) == 1:
+                if len(g_list) == 1:
                     msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, 0, 4)
                 else:
-                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -log_count, 4)
+                    msgstr += make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -status_every_nbatch, 4)
                 msgstr += f'[LR: {lr}]'
                 log(msgstr)
-                # set log_count 0 after log
-                log_count = 0
 
             nbatch = batch_nr
 
-        # END FOR BATCH
+            ################ END FOR BATCH (one epoch processed)
 
         # print time for epoch and time for batch
         log(f'Time for epoch {epoch}: {int(time.time() - before)}')
@@ -229,14 +233,9 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
         # print losses and write to loss_file
         if epoch % n_save == 0:
-            if epoch == 0:
-                gloss = np.mean(g_list[0:], axis=0),
-                dloss = np.mean(d_list[0:], axis=0),
-                sloss = np.mean(s_list[0:], axis=0),
-            else:
-                gloss = np.mean(g_list[-n_save * batch_count:], axis=0),
-                dloss = np.mean(d_list[-n_save * batch_count:], axis=0),
-                sloss = np.mean(s_list[-n_save * batch_count:], axis=0),
+            gloss = np.mean(g_list[-n_save * nbatches_in_ds:], axis=0),
+            dloss = np.mean(d_list[-n_save * nbatches_in_ds:], axis=0),
+            sloss = np.mean(s_list[-n_save * nbatches_in_ds:], axis=0),
 
             save_end(epoch,
                      gloss,
@@ -244,38 +243,37 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
                      sloss,
                  gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
 
-        log(f'Mean D loss: {np.mean(d_list[-batch_count:], axis=0)} Mean G loss: {np.mean(g_list[-batch_count:], axis=0)} Mean Val loss: {np.mean(val_list[-batch_count:], axis=0)} Mean ID loss: {np.mean(id_list[-batch_count:], axis=0)}, Mean S loss: {np.mean(s_list[-batch_count:], axis=0)}')
+        log(f'Mean D loss: {np.mean(d_list[-nbatches_in_ds:], axis=0)} Mean G loss: {np.mean(g_list[-nbatches_in_ds:], axis=0)} Mean Val loss: {np.mean(val_list[-nbatches_in_ds:], axis=0)} Mean ID loss: {np.mean(id_list[-nbatches_in_ds:], axis=0)}, Mean S loss: {np.mean(s_list[-nbatches_in_ds:], axis=0)}')
 
-        losses_csv = f'{epoch},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -batch_count, 6)},{lr}\n'
+        losses_csv = f'{epoch},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -nbatches_in_ds, 9)},{lr}\n'
         csvfile.write(losses_csv)
 
         logfile.flush()
         csvfile.flush()
-        final_batch_c = batch_count
-        batch_count = 0
 
-    # end for epochs
+    ################ END FOR EPOCHS (all epochs processed)
+
+    #####################
+    # TRAINING FINISHED -> RESULT LOSSES AND STATUS OUTPUT
+    #####################
 
     # print FINAL losses and write to loss file
-    last_nsave = (epochs - 1) % n_save * final_batch_c
-    save_end(epochs - 1,
-             np.mean(g_list[-last_nsave:], axis=0),
-             np.mean(d_list[-last_nsave:], axis=0),
-             np.mean(s_list[-last_nsave:], axis=0),
-             gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
+    if epochs % n_save != 0:
+        save_end(epochs,
+                np.mean(g_list, axis=0),
+                np.mean(d_list, axis=0),
+                np.mean(s_list, axis=0),
+                gl_gen, gl_discr, gl_siam, dstrain.as_numpy_iterator().next(), save_path=GL_SAVE)
 
-    log(f'Mean D loss: {np.mean(d_list[-last_nsave:], axis=0)} Mean G loss: {np.mean(g_list[-last_nsave:], axis=0)} Mean Val loss: {np.mean(val_list[-last_nsave:], axis=0)} Mean ID loss: {np.mean(id_list[-last_nsave:], axis=0)}, Mean S loss: {np.mean(s_list[-last_nsave:], axis=0)}')
+    #losses_csv = f'{epochs},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, 0, 6)},{lr}\n'
+    #csvfile.write(losses_csv)
 
-    losses_csv = f'{epochs - 1},{make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, -last_nsave, 6)},{lr}\n'
-    csvfile.write(losses_csv)
+    log(f'FINAL Mean D loss: {np.mean(d_list, axis=0)} Mean G loss: {np.mean(g_list, axis=0)} Mean Val loss: {np.mean(val_list, axis=0)} Mean ID loss: {np.mean(id_list, axis=0)}, Mean S loss: {np.mean(s_list, axis=0)}')
 
     logfile.flush()
     csvfile.flush()
 
     # end train
-
-GL_SAVE = '../Ergebnisse/Versuch05_3_0_LossPaper/'
-GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
 
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
@@ -289,11 +287,11 @@ if __name__ == "__main__":
     #dsval = dsval.repeat(500).prefetch(AUTOTUNE)
     #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
-
     # do things: get networks with proper size (shape should be changed)
     gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
 
     log(getconstants())
 
     # start training
+    #testfunc(10, GL_BS, 1300)
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
