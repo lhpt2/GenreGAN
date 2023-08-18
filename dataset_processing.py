@@ -107,9 +107,9 @@ def load_spec_array_splitseconds(o_path, min=0, max=0, sec: int = 5):
         rlist.append(remix)
 
     print('Creating ragged tensors...')
-    ids = tf.ragged.constant(ids)
-    olist = tf.ragged.constant(olist)
-    rlist = tf.ragged.constant(rlist)
+    ids = np.array(ids)
+    olist = np.array(olist)
+    rlist = np.array(rlist)
     print("finished")
     return ids, olist, rlist
 def load_spec_array_splitseconds_joined(o_path, min=0, max=0, sec: int = 5):
@@ -197,6 +197,7 @@ def split_xsec_size(id: int, orig: np.ndarray, remix: np.ndarray, secs: int = 5,
         rlist.append(remix[:, i * binlen: (i + 1) * binlen])
 
     return np.array(ids), np.array(olist), np.array(rlist)
+
 def construct_save_ds(ids, origs, remixes, path):
     ds = tf.data.Dataset.from_tensor_slices((ids, origs, remixes))
     print(f"Dataset constructed, saving now...")
