@@ -2,7 +2,7 @@ import random
 import numpy as np
 
 from constants import log
-from training_new import make_losses_string, make_csv_string
+from training import make_losses_string, make_csv_string
 
 def dummy_losses_d():
     loss_d = random.uniform(0.3, 1000.4578)
