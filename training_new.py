@@ -94,6 +94,11 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
         l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
         loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val)
+        if np.isnan(loss_g_val):
+            if np.isnan(l_travel_val):
+                log("l_travel_val is NAN")
+            if np.isnan(l_id_val):
+                log("l_id_val is NAN")
 
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
@@ -204,7 +209,12 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             g_list.append(loss_g)
             s_list.append(loss_s)
             id_list.append(l_id)
-            val_list.append(loss_g_val)
+
+            if np.isnan(loss_g_val):
+                log(f"NOT A NUMBER VALIDATION ERROR {epoch}/{epochs} batch: {batch_nr}/{nbatches_in_ds}, gen_upd: {gen_update}, nsave: {n_save}")
+                val_list.append(val_list[-1])
+            else:
+                val_list.append(loss_g_val)
 
             # Print status every 100 batches
             if batch_nr % status_every_nbatch == 0:
@@ -289,4 +299,6 @@ if __name__ == "__main__":
 
     # start training
     #testfunc(10, GL_BS, 1300)
-    train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
+    train(dstrain, dsval, 800, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
+
+    # make dataset audible and hear if time aligned samples are in there
