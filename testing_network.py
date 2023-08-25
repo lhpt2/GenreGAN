@@ -4,9 +4,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+from keras.optimizers import Adam
+
+from architecture_v2 import build, load
 from constants import GL_SR, GL_SHAPE, log, secs_to_bins
 from dataset_processing import db_spec_to_wave
-from training_new import get_networks
+
+def get_networks(shape, load_model=False, path=None):
+   if not load_model:
+      gen, critic, siam = build()
+   else:
+      gen, critic, siam = load(path)
+
+   print('Built networks')
+   opt_gen = Adam(0.0001, 0.5)
+   opt_disc = Adam(0.0001, 0.5)
+   opt_siam = Adam(0.0001, 0.5)
+
+   return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
 def save_spec_to_wv(spec, filepath='./test.wav'):
    wv = db_spec_to_wave(spec)
@@ -148,14 +163,18 @@ def chopspec(spec):
    return np.array(dsa, dtype=np.float32)
 
 
+from pathlib import Path
 
 if __name__ == '__main__':
+   os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
    #GL_SHAPE = 24
-   starttime=0
-   snippetlen=10
-   gen, critic, siam, [opt_gen, opt_disc] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch02_1_0_Validierung/2023-08-08-01-59_499_-9.440582_0.6141752')
-   spec = np.load('../spec_val_o/155_o_Karol_G_Ocean.npy')
-   start: int = secs_to_bins(starttime)
-   end: int = secs_to_bins(starttime + snippetlen)
-   spec = spec[:, start:end]
+   LOAD = "../Ergebnisse/Versuch06_3_0_LossPaper_3_10_10_0.7/2023-08-19-23-23_500_1767_0.01"
+   #starttime=0
+   #snippetlen=10
+   gen, critic, siam, [opt_gen, opt_disc] = get_networks(GL_SHAPE, load_model=True, path=LOAD)
+   #spec = np.load('../spec_val_o/155_o_Karol_G_Ocean.npy')
+   #start: int = secs_to_bins(starttime)
+   #end: int = secs_to_bins(starttime + snippetlen)
+   #spec = spec[:, start:end]
+   spec = tf.random.uniform(shape=[192, 576])
    use_generator(spec, gen)
