@@ -10,6 +10,16 @@ from constants import *
 from dataset_processing import load_dsparts
 from architecture_v2 import load, build, extract_image, assemble_image
 
+logfile = open(f"{GL_SAVE}/log.txt", "a")
+GL_STARTTIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+logfile.write("######### " + GL_STARTTIME + " Starting training" + " #########\n")
+
+def log(msg: str, end="\n"):
+    print(msg, end=end)
+    if end == "\n":
+        msg = msg + "\n"
+    logfile.write(msg)
+
 def get_networks(shape, load_model=False, path=None):
     if not load_model:
         gen, critic, siam = build()
@@ -55,29 +65,9 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         siam_src3 = gl_siam(src3, training=True)
 
 
-        # feed validation samples to generator
-        gen_vals1 = gl_gen(vals1, training=False)
-        gen_vals2 = gl_gen(vals2, training=False)
-        gen_vals3 = gl_gen(vals3, training=False)
-        gen_vals = assemble_image([gen_vals1, gen_vals2, gen_vals3])
-
-        gen_valr1 = gl_gen(valr1, training=False)
-        gen_valr2 = gl_gen(valr2, training=False)
-        gen_valr3 = gl_gen(valr3, training=False)
-        gen_valr = assemble_image([gen_valr1, gen_valr2, gen_valr3])
-
-        # feed validation samples to siamese
-        siam_gen_vals1 = gl_siam(gen_vals1, training=False)
-        siam_gen_vals3 = gl_siam(gen_vals3, training=False)
-        siam_vals1 = gl_siam(vals1, training=False)
-        siam_vals3 = gl_siam(vals3, training=False)
-
         ##################
         # LOSS CALCULATION
         ##################
-
-        # feed generated validation to discriminator
-        d_gen_vals = gl_discr(tf.expand_dims(tf.expand_dims(gen_vals, -1), 0), training=False)
 
         # calculate dloss
         loss_d, loss_df, loss_dr = L_d(d_trgt, d_gen_src)
@@ -91,15 +81,6 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
         l_id = L_g_id(GL_ALPHA, train_trgt, gen_trgt)
         loss_g = L_g(d_gen_src, l_travel, l_id)
 
-        l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
-        l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
-        loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val)
-        if np.isnan(loss_g_val):
-            if np.isnan(l_travel_val):
-                log("l_travel_val is NAN")
-            if np.isnan(l_id_val):
-                log("l_id_val is NAN")
-
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
 
@@ -108,6 +89,30 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
     grad_siam = tape_siam.gradient(loss_s, gl_siam.trainable_variables)
     gl_opt_siam.apply_gradients(zip(grad_siam, gl_siam.trainable_variables))
+
+    # feed validation samples to generator
+    gen_vals1 = gl_gen(vals1, training=False)
+    gen_vals2 = gl_gen(vals2, training=False)
+    gen_vals3 = gl_gen(vals3, training=False)
+    gen_vals = assemble_image([gen_vals1, gen_vals2, gen_vals3])
+
+    gen_valr1 = gl_gen(valr1, training=False)
+    gen_valr2 = gl_gen(valr2, training=False)
+    gen_valr3 = gl_gen(valr3, training=False)
+    gen_valr = assemble_image([gen_valr1, gen_valr2, gen_valr3])
+
+    # feed validation samples to siamese
+    siam_gen_vals1 = gl_siam(gen_vals1, training=False)
+    siam_gen_vals3 = gl_siam(gen_vals3, training=False)
+    siam_vals1 = gl_siam(vals1, training=False)
+    siam_vals3 = gl_siam(vals3, training=False)
+
+    # feed generated validation to discriminator
+    d_gen_vals = gl_discr(tf.expand_dims(tf.expand_dims(gen_vals, -1), 0), training=False)
+
+    l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
+    l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
+    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val)
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
@@ -285,7 +290,7 @@ if __name__ == "__main__":
     dstrain = load_dsparts('dstrainQuick')
 
     # TRAINING SETUP
-    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
+    #dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # DEBUGGING SETUP
@@ -293,12 +298,10 @@ if __name__ == "__main__":
     #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
-    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False)
+    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch07_LossPaper_3.0_1.5_10.0_10.0_0.7/2023-08-25-18-31_312')
 
     log(getconstants())
 
     # start training
     #testfunc(10, GL_BS, 1300)
-    train(dstrain, dsval, 800, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=0)
-
-    # make dataset audible and hear if time aligned samples are in there
+    train(dstrain, dsval, 800, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=313)
