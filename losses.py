@@ -15,7 +15,7 @@ def L_d_real(d_target):
     return tf.reduce_mean(tf.maximum(0., 1 - d_target))
     #return -tf.reduce_mean(tf.minimum(0., -1 + d_target))
 
-def L_g(d_g_src, l_travel: float, l_id: float):
+def L_g(d_g_src, l_travel, l_id):
     return L_g_adv(d_g_src) + l_id + l_travel
 
 def L_g_adv(d_g_src):
@@ -24,7 +24,7 @@ def L_g_adv(d_g_src):
 def L_g_id(alpha: float, trgt, g_trgt):
     return alpha * tf.reduce_mean(l2_squared(g_trgt - trgt))
 
-def L_s(l_travel, l_s_margin: float):
+def L_s(l_travel, l_s_margin):
     return l_travel + l_s_margin
 
 def L_travel(beta: float, s_src1, s_src2, s_g_src1, s_g_src2):
