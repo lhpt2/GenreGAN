@@ -1,14 +1,22 @@
 import datetime
+import os.path
+
 import tensorflow as tf
 
 from keras.optimizers import Adam
 from tensorflow.python.data import AUTOTUNE
 
-from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id
+from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id, L_g_freqprio, L_g_parallel_comparison
 from testing_network import save_end
 from constants import *
 from dataset_processing import load_dsparts
 from architecture_v2 import load, build, extract_image, assemble_image
+from losses import get_target_avg
+
+# Preparation of logfile and savepath
+
+if not os.path.exists(GL_SAVE):
+    os.mkdir(GL_SAVE)
 
 logfile = open(f"{GL_SAVE}/log.txt", "a")
 GL_STARTTIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -32,6 +40,15 @@ def get_networks(shape, load_model=False, path=None):
     opt_siam = Adam(0.0001, 0.5)
 
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
+
+
+'''
+Measure if src and trgt are parallel enough for calculating a loss
+'''
+def is_parallel(val_src, val_trgt):
+    # cross entropy?
+    return 0
+
 
 @tf.function
 def train_all(train_src, train_trgt, val_src, val_trgt):
@@ -79,7 +96,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
         # calculate gloss
         l_id = L_g_id(GL_ALPHA, train_trgt, gen_trgt)
-        loss_g = L_g(d_gen_src, l_travel, l_id)
+        loss_g = L_g(d_gen_src, l_travel, l_id) + GL_EPSILON * L_g_freqprio(gen_src, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(gen_src, train_trgt)
 
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
@@ -112,7 +129,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
     l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
     l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
-    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val)
+    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val) + GL_EPSILON * L_g_freqprio(gen_vals, GL_TRGT_AVG_DIST) + GL_ZETA * is_parallel(val_src, val_trgt) + L_g_parallel_comparison(gen_vals, val_trgt)
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
@@ -288,9 +305,10 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
+    GL_TRGT_AVG_DIST = get_target_avg(dstrain)
 
     # TRAINING SETUP
-    #dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
+    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # DEBUGGING SETUP
@@ -298,10 +316,10 @@ if __name__ == "__main__":
     #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
-    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch07_LossPaper_3.0_1.5_10.0_10.0_0.7/2023-08-25-18-31_312')
+    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False, path='../Ergebnisse/Versuch00000000/2023-08-31_12')
 
     log(getconstants())
 
     # start training
     #testfunc(10, GL_BS, 1300)
-    train(dstrain, dsval, 800, batch_size=GL_BS, lr=0.0001, n_save=6, gen_update=5, startep=313)
+    train(dstrain, dsval, 1000, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5 )
