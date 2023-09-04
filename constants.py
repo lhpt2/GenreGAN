@@ -22,19 +22,20 @@ GL_BETA = 10.
 # gamma -> margin loss factor
 GL_GAMMA = 10.
 
-# delta -> distance of vectors in margin (siamese) loss
-GL_DELTA = 0.7            #constant for siamese loss
-
 # epsilon -> frequency priorisation
-GL_EPSILON = 1
+GL_EPSILON = 7.
 
 # zeta -> parallel error
-GL_ZETA = 1
+GL_ZETA = 0.
+
+
+# delta -> distance of vectors in margin (siamese) loss
+GL_DELTA = 0.7            #constant for siamese loss
 
 GL_EXP_NR = 8
 GL_VERSION = '3.1'
 
-GL_SAVE = f'../Ergebnisse/Versuch{GL_EXP_NR:02d}_LossPaper_{GL_VERSION}_{GL_ALPHA}_{GL_BETA}_{GL_GAMMA}_{GL_DELTA}'
+GL_SAVE = f'../Ergebnisse/Versuch{GL_EXP_NR:02d}_LossPaper_{GL_VERSION}_{GL_ALPHA}_{GL_BETA}_{GL_GAMMA}_{GL_DELTA}_{GL_EPSILON}_{GL_ZETA}'
 
 #GL_SAVE = '../Ergebnisse/Versuch06_3_0_P'
 GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
