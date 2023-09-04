@@ -49,6 +49,30 @@ def L_s_full(beta: float, gamma: float, delta: float, src1, src2, s_src1, s_src2
 def L_g_full(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s_g_src1, s_g_src2):
     return L_g_adv(d_g_src) + L_g_id(alpha, trgt, g_trgt) + L_travel(beta, s_src1, s_src2, s_g_src1, s_g_src2)
 
+'''
+Get average frequency distribution of target dataset (not normalized)
+'''
+def get_target_avg(dstrain: tf.data.Dataset):
+    result = None
+    for spec in dstrain.take(1):
+        result = tf.zeros_like(spec[2][0])
+
+    count = 0
+    for _, _, target in dstrain:
+        result += tf.reduce_mean(target, axis=0)
+        count += 1
+
+    return result / count
+
+def L_g_freqprio(g_src, freqmask_spec):
+   #freqmask_spec already reduced mean
+   norm_freqmask, _ = tf.linalg.normalize(freqmask_spec, ord=1)
+   norm_g_src = tf.linalg.normalize(g_src, ord=1)
+   return tf.reduce_sum(tf.abs(norm_freqmask - norm_g_src))
+
+def L_g_parallel_comparison(g_src, trgt):
+    return 0
+
 ##################
 # HELPER FUNCTIONS
 ##################
