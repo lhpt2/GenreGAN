@@ -113,6 +113,8 @@ def save_test_image_full(path, gen, aspec):
    abwv = db_spec_to_wave(ab)
    awv = db_spec_to_wave(a)
 
+   save_spec_img(a, f'Original #{id}', filename=path + f'/{id}_orig.png')
+   save_spec_img(ab, f'Generated #{id}', filename=path + f'/{id}_generated.png')
    sf.write(path + f'/{id}_orig.wav', awv, GL_SR)
    sf.write(path + f'/{id}_generated.wav', abwv, GL_SR)
    #IPython.display.display(IPython.display.Audio(np.squeeze(abwv), rate=sr))
@@ -125,6 +127,21 @@ def save_test_image_full(path, gen, aspec):
    #axs[1].axis('off')
    #axs[1].set_title('Generated')
    #plt.show()
+
+def save_spec_img(x, title, filename='Testfig.png'):
+   fig, axs = plt.subplots()
+   axs.imshow(np.flip(x, -2), cmap=None)
+   axs.axis('off')
+   axs.set_title(title)
+   # fig, axs = plt.subplots(ncols=2)
+   # axs[0].imshow(np.flip(a, -2), cmap=None)
+   # axs[0].axis('off')
+   # axs[0].set_title('Source')
+   # axs[1].imshow(np.flip(ab, -2), cmap=None)
+   # axs[1].axis('off')
+   # axs[1].set_title('Generated')
+   fig.savefig(filename)
+   #plt.show(block=True)
 
 """ Save in training loop """
 def save_end(epoch, gloss, closs, mloss, gen, critic, siam, aspec, n_save=3, save_path='./'):                 #use custom save_path (i.e. Drive '../content/drive/My Drive/')
