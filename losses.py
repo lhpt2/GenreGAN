@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 from constants import GL_DELTA
 
 #Losses
@@ -54,8 +55,8 @@ Get average frequency distribution of target dataset (not normalized)
 '''
 def get_target_avg(dstrain: tf.data.Dataset):
     result = None
-    for spec in dstrain.take(1):
-        result = tf.zeros_like(spec[2][0])
+    for _, _, spec in dstrain.take(1):
+        result = tf.zeros_like(spec)
 
     count = 0
     for _, _, target in dstrain:
@@ -67,11 +68,43 @@ def get_target_avg(dstrain: tf.data.Dataset):
 def L_g_freqprio(g_src, freqmask_spec):
    #freqmask_spec already reduced mean
    norm_freqmask, _ = tf.linalg.normalize(freqmask_spec, ord=1)
-   norm_g_src = tf.linalg.normalize(g_src, ord=1)
+   norm_freqmask = tf.expand_dims(norm_freqmask, 0)
+   norm_freqmask = tf.repeat(norm_freqmask, g_src.shape[0], 0)
+   norm_g_src, _ = tf.linalg.normalize(g_src, ord=1)
    return tf.reduce_sum(tf.abs(norm_freqmask - norm_g_src))
 
-def L_g_parallel_comparison(g_src, trgt):
+def map_handle_nan(x):
+    if tf.math.is_nan(x):
+        return 0.
+    else:
+        return x
+
+'''
+Measure if src and trgt are parallel enough for calculating a loss
+'''
+def is_parallel(src, trgt):
+    res = tfp.stats.correlation(src, trgt, sample_axis=1, event_axis=None)
+    res = tf.map_fn(lambda x: map_handle_nan(x), res)
+    res = tf.reduce_mean(res)
+    if res >= 0.5:
+        return 1
     return 0
+
+def L_g_parallel_comparison(g_src_batch, trgt_batch, src_batch):
+    res = 0.
+    count = 0
+    for i in range(g_src_batch.shape[0]):
+        if is_parallel(src_batch[i], trgt_batch[i]) == 1:
+            count += 1
+            res += l2_norm(g_src_batch[i] - trgt_batch[i])
+
+
+    if count == 0:
+        return 0.0
+
+    return res / float(count)
+
+
 
 ##################
 # HELPER FUNCTIONS
