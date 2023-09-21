@@ -1,13 +1,17 @@
 import datetime
+import math
 import os.path
 
+import matplotlib
+import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from keras.optimizers import Adam
 from tensorflow.python.data import AUTOTUNE
+import tensorflow_probability as tfp
 
 from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id, L_g_freqprio, L_g_parallel_comparison
-from testing_network import save_end
+from testing_network import save_end, save_spec_to_wv
 from constants import *
 from dataset_processing import load_dsparts
 from architecture_v2 import load, build, extract_image, assemble_image
@@ -42,20 +46,16 @@ def get_networks(shape, load_model=False, path=None):
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
 
-'''
-Measure if src and trgt are parallel enough for calculating a loss
-'''
-def is_parallel(val_src, val_trgt):
-    # cross entropy?
-    return 0
+
+
 
 
 @tf.function
 def train_all(train_src, train_trgt, val_src, val_trgt):
     src1, src2, src3 = extract_image(train_src)
     trgt1, trgt2, trgt3 = extract_image(train_trgt)
-    vals1, vals2, vals3 = extract_image(tf.expand_dims(val_src,0))
-    valr1, valr2, valr3 = extract_image(tf.expand_dims(val_trgt, 0))
+    vals1, vals2, vals3 = extract_image(val_src)
+    valr1, valr2, valr3 = extract_image(val_trgt)
 
     with tf.GradientTape() as tape_gen, tf.GradientTape() as tape_disc, tf.GradientTape() as tape_siam:
         # translating src (A) to target' (B')
@@ -96,7 +96,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
         # calculate gloss
         l_id = L_g_id(GL_ALPHA, train_trgt, gen_trgt)
-        loss_g = L_g(d_gen_src, l_travel, l_id) + GL_EPSILON * L_g_freqprio(gen_src, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(gen_src, train_trgt)
+        loss_g = L_g(d_gen_src, l_travel, l_id) + GL_EPSILON * L_g_freqprio(gen_src, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(gen_src, train_trgt, train_src)
 
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
@@ -125,11 +125,11 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
     siam_vals3 = gl_siam(vals3, training=False)
 
     # feed generated validation to discriminator
-    d_gen_vals = gl_discr(tf.expand_dims(tf.expand_dims(gen_vals, -1), 0), training=False)
+    d_gen_vals = gl_discr(tf.expand_dims(gen_vals, -1), training=False)
 
     l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
     l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
-    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val) + GL_EPSILON * L_g_freqprio(gen_vals, GL_TRGT_AVG_DIST) + GL_ZETA * is_parallel(val_src, val_trgt) + L_g_parallel_comparison(gen_vals, val_trgt)
+    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val) + GL_EPSILON * L_g_freqprio(gen_vals, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(val_src, gen_vals, val_trgt)
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
@@ -212,16 +212,16 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
         # Training Loop batches
         for batch_nr, elem in enumerate(ds_train):
             #id = elem[0]
-            sample_src = elem[1]
-            sample_trgt = elem[2]
+            sample_src_batch = elem[1]
+            sample_trgt_batch = elem[2]
 
             # Train generator ever gen_update batches
             val = val_pool.next()
             if (batch_nr % gen_update) == 0:
-                loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = train_all(sample_src, sample_trgt, val[1], val[2])
+                loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = train_all(sample_src_batch, sample_trgt_batch, val[1], val[2])
                 #loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val  = dummy_losses_all()
             else:
-                loss_d, loss_df, loss_dr = train_d(sample_src, sample_trgt)
+                loss_d, loss_df, loss_dr = train_d(sample_src_batch, sample_trgt_batch)
                 #loss_d, loss_df, loss_dr = dummy_losses_d()
 
             # append losses
@@ -302,24 +302,41 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
     # end train
 
+def save_spec_img(x, title, filename='Testfig.png'):
+    fig, axs = plt.subplots()
+    axs.imshow(np.flip(x, -2), cmap=None)
+    axs.axis('off')
+    axs.set_title(title)
+    # fig, axs = plt.subplots(ncols=2)
+    # axs[0].imshow(np.flip(a, -2), cmap=None)
+    # axs[0].axis('off')
+    # axs[0].set_title('Source')
+    # axs[1].imshow(np.flip(ab, -2), cmap=None)
+    # axs[1].axis('off')
+    # axs[1].set_title('Generated')
+    fig.savefig(filename)
+    #plt.show(block=True)
+
+
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
     GL_TRGT_AVG_DIST = get_target_avg(dstrain)
 
     # TRAINING SETUP
-    dsval = dsval.repeat(500).shuffle(10000).prefetch(AUTOTUNE)
+    dsval = dsval.repeat().shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+
 
     # DEBUGGING SETUP
     #dsval = dsval.repeat(500).prefetch(AUTOTUNE)
     #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
-    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False, path='../Ergebnisse/Versuch00000000/2023-08-31_12')
+    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch08_LossPaper_3.1_1.0_5.0_10.0_0.7_4.0_0.0/2023-09-07-01-35_126')
 
     log(getconstants())
 
     # start training
     #testfunc(10, GL_BS, 1300)
-    train(dstrain, dsval, 1000, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5 )
+    train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5)
