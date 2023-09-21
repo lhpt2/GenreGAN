@@ -1,3 +1,6 @@
+"""
+Functions to train the network
+"""
 import datetime
 import math
 import os.path
@@ -32,6 +35,10 @@ def log(msg: str, end="\n"):
         msg = msg + "\n"
     logfile.write(msg)
 
+"""
+If no weights to be loaded, build new network
+else load network with saved weights
+"""
 def get_networks(shape, load_model=False, path=None):
     if not load_model:
         gen, critic, siam = build()
@@ -45,11 +52,10 @@ def get_networks(shape, load_model=False, path=None):
 
     return gen, critic, siam, [opt_gen, opt_disc, opt_siam]
 
+"""
+Training function training all networks
 
-
-
-
-
+"""
 @tf.function
 def train_all(train_src, train_trgt, val_src, val_trgt):
     src1, src2, src3 = extract_image(train_src)
@@ -133,6 +139,9 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
+"""
+function training only the discriminator
+"""
 @tf.function
 def train_d(sample_src, sample_trgt):
     src1, src2, src3 = extract_image(sample_src)
@@ -153,6 +162,10 @@ def train_d(sample_src, sample_trgt):
 
     return loss_d, loss_df, loss_dr
 
+
+"""
+functions for creating debug and status messages
+"""
 def make_losses_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list, start: int, decimals: int = 9):
     msg = f'[D loss: {str(np.mean(d_list[start:], axis=0))}] '
     msg += f'[G loss: {str(np.mean(g_list[start:], axis=0))}] '
@@ -172,6 +185,10 @@ def make_csv_string(d_list, dr_list, df_list, g_list, s_list, id_list, val_list,
 def csvheader():
     return 'epoch,dloss,drloss,dfloss,gloss,sloss,idloss,vloss,lr'
 
+
+"""
+Main training function
+"""
 def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300, batch_size=16, lr=0.0001, n_save=6,
           gen_update=5, startep=1, status_every_nbatch = 100):
     # LOGGING
@@ -238,7 +255,7 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
             else:
                 val_list.append(loss_g_val)
 
-            # Print status every 100 batches
+            # Print status every status_every_nbatch batches
             if batch_nr % status_every_nbatch == 0:
                 log(time.strftime("%H:%M:%S ", time.localtime()), end='')
                 # log epoch/epochs batch_nr d_loss d_loss_r d_loss_f g_loss s_loss id_loss lr
@@ -302,31 +319,27 @@ def train(ds_train: tf.data.Dataset, ds_val: tf.data.Dataset, epochs: int = 300,
 
     # end train
 
+"""
+save a spectrogram as png image
+"""
 def save_spec_img(x, title, filename='Testfig.png'):
     fig, axs = plt.subplots()
     axs.imshow(np.flip(x, -2), cmap=None)
     axs.axis('off')
     axs.set_title(title)
-    # fig, axs = plt.subplots(ncols=2)
-    # axs[0].imshow(np.flip(a, -2), cmap=None)
-    # axs[0].axis('off')
-    # axs[0].set_title('Source')
-    # axs[1].imshow(np.flip(ab, -2), cmap=None)
-    # axs[1].axis('off')
-    # axs[1].set_title('Generated')
     fig.savefig(filename)
-    #plt.show(block=True)
 
 
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")
     dstrain = load_dsparts('dstrainQuick')
+
+    # calculating average distribution for frequency priorisation loss
     GL_TRGT_AVG_DIST = get_target_avg(dstrain)
 
     # TRAINING SETUP
     dsval = dsval.repeat().shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
-
 
     # DEBUGGING SETUP
     #dsval = dsval.repeat(500).prefetch(AUTOTUNE)
@@ -338,5 +351,4 @@ if __name__ == "__main__":
     log(getconstants())
 
     # start training
-    #testfunc(10, GL_BS, 1300)
     train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5)

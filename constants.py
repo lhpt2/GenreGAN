@@ -1,3 +1,9 @@
+"""
+This file contains all the hyperparameters
+and more global constants for convenient execution of experiments.
+
+"""
+
 import time
 import numpy as np
 
@@ -39,6 +45,7 @@ GL_SAVE = f'../Ergebnisse/Versuch{GL_EXP_NR:02d}_LossPaper_{GL_VERSION}_{GL_ALPH
 
 GL_LOAD = '../Ergebnisse/Versuch01_1_0_ohneValidierung/2023-07-27-10-31_294_0.4249099_0.6567595'
 
+""" get a string with all important constants """
 def getconstants():
    msgstr = f"hop size: {GL_HOP} \n"
    msgstr += f"shape: {GL_SHAPE} \n"
@@ -49,9 +56,11 @@ def getconstants():
    msgstr += f"Save to: {GL_SAVE} \n"
    return msgstr
 
+""" log to stdout unless function gets locally overwritten/not imported """
 def log(msg: str, end='\n'):
     print(msg, end=end)
 
+""" functions to convert seconds to nr of values (bins) in spectrogram (spectrogram time unit) """
 def bins_to_secs(bins, sr=22050, hop=192):
     return bins * hop // sr
 

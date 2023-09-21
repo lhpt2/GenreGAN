@@ -1,3 +1,6 @@
+"""
+Functions to test a trained network
+"""
 import soundfile as sf
 import os, datetime
 import numpy as np

@@ -1,3 +1,7 @@
+"""
+Attempt to create dummyfunctions for debugging
+errors in the code
+"""
 import random
 import numpy as np
 

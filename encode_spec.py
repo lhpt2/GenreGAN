@@ -1,3 +1,7 @@
+"""
+Create spectrogram data as .npy file
+from wave audio file
+"""
 import sys
 import numpy
 import os

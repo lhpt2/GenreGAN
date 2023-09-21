@@ -1,3 +1,6 @@
+"""
+Classes for 2D convolution with spectral normalization
+"""
 import tensorflow as tf
 import keras.backend as K
 from keras.layers import Dense

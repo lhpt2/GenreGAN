@@ -1,8 +1,13 @@
+"""
+File containing all loss functions
+used for training the networks
+"""
 import tensorflow as tf
 import tensorflow_probability as tfp
 from constants import GL_DELTA
 
-#Losses
+
+#### discriminator loss
 def L_d(d_target, d_g_source):
     dr_loss = L_d_real(d_target)
     df_loss = L_d_fake(d_g_source)
@@ -16,6 +21,8 @@ def L_d_real(d_target):
     return tf.reduce_mean(tf.maximum(0., 1 - d_target))
     #return -tf.reduce_mean(tf.minimum(0., -1 + d_target))
 
+
+#### generator loss
 def L_g(d_g_src, l_travel, l_id):
     return L_g_adv(d_g_src) + l_id + l_travel
 
@@ -25,9 +32,20 @@ def L_g_adv(d_g_src):
 def L_g_id(alpha: float, trgt, g_trgt):
     return alpha * tf.reduce_mean(l2_squared(g_trgt - trgt))
 
+### loss forcing network to match a frequency distribution
+def L_g_freqprio(g_src, freqmask_spec):
+    #freqmask_spec already reduced mean
+    norm_freqmask, _ = tf.linalg.normalize(freqmask_spec, ord=1)
+    norm_freqmask = tf.expand_dims(norm_freqmask, 0)
+    norm_freqmask = tf.repeat(norm_freqmask, g_src.shape[0], 0)
+    norm_g_src, _ = tf.linalg.normalize(g_src, ord=1)
+    return tf.reduce_sum(tf.abs(norm_freqmask - norm_g_src))
+
+#### siamese loss
 def L_s(l_travel, l_s_margin):
     return l_travel + l_s_margin
 
+#### losses used for multiple networks
 def L_travel(beta: float, s_src1, s_src2, s_g_src1, s_g_src2):
     t12 = s_src1 - s_src2
     t_12 = s_g_src1 - s_g_src2
@@ -36,19 +54,12 @@ def L_travel(beta: float, s_src1, s_src2, s_g_src1, s_g_src2):
 def L_s_margin(gamma: float, delta: float, src1, src2, s_src1, s_src2):
     t12 = s_src1 - s_src2
     return gamma * tf.reduce_mean(tf.maximum(0.0, delta - l2_norm(t12)))
-# finished
 
-# sorted out
+
+
+###### sorted out
 def L_g_noID(d_g_src, l_travel: float):
     return L_g_adv(d_g_src) + l_travel
-
-# all param losses
-
-def L_s_full(beta: float, gamma: float, delta: float, src1, src2, s_src1, s_src2, s_g_src1, s_g_src2):
-    return L_travel(beta, s_src1, s_src2, s_g_src1, s_g_src2) + L_s_margin(gamma, delta, src1, src2, s_src1, s_src2)
-
-def L_g_full(alpha: float, beta: float, d_g_src, trgt, g_trgt, s_src1, s_src2, s_g_src1, s_g_src2):
-    return L_g_adv(d_g_src) + L_g_id(alpha, trgt, g_trgt) + L_travel(beta, s_src1, s_src2, s_g_src1, s_g_src2)
 
 '''
 Get average frequency distribution of target dataset (not normalized)
@@ -65,13 +76,6 @@ def get_target_avg(dstrain: tf.data.Dataset):
 
     return result / count
 
-def L_g_freqprio(g_src, freqmask_spec):
-   #freqmask_spec already reduced mean
-   norm_freqmask, _ = tf.linalg.normalize(freqmask_spec, ord=1)
-   norm_freqmask = tf.expand_dims(norm_freqmask, 0)
-   norm_freqmask = tf.repeat(norm_freqmask, g_src.shape[0], 0)
-   norm_g_src, _ = tf.linalg.normalize(g_src, ord=1)
-   return tf.reduce_sum(tf.abs(norm_freqmask - norm_g_src))
 
 def map_handle_nan(x):
     if tf.math.is_nan(x):
@@ -79,9 +83,9 @@ def map_handle_nan(x):
     else:
         return x
 
-'''
+"""
 Measure if src and trgt are parallel enough for calculating a loss
-'''
+"""
 def is_parallel(src, trgt):
     res = tfp.stats.correlation(src, trgt, sample_axis=1, event_axis=None)
     res = tf.map_fn(lambda x: map_handle_nan(x), res)
@@ -90,6 +94,9 @@ def is_parallel(src, trgt):
         return 1
     return 0
 
+"""
+Loss for comparison of parallel data 
+"""
 def L_g_parallel_comparison(g_src_batch, trgt_batch, src_batch):
     res = 0.
     count = 0
@@ -103,8 +110,6 @@ def L_g_parallel_comparison(g_src_batch, trgt_batch, src_batch):
         return 0.0
 
     return res / float(count)
-
-
 
 ##################
 # HELPER FUNCTIONS

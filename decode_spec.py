@@ -1,3 +1,7 @@
+"""
+Take spectrogram data saved as .npy file
+and convert it to audio of given sample rate
+"""
 import sys
 import numpy
 import os
