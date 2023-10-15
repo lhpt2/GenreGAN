@@ -2,6 +2,7 @@
 This file contains all the hyperparameters
 and more global constants for convenient execution of experiments.
 
+It makes up the main configuration of the whole system.
 """
 
 import time

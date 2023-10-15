@@ -2,23 +2,20 @@
 Functions to train the network
 """
 import datetime
-import math
 import os.path
 
-import matplotlib
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from keras.optimizers import Adam
 from tensorflow.python.data import AUTOTUNE
-import tensorflow_probability as tfp
 
-from losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id, L_g_freqprio, L_g_parallel_comparison
-from testing_network import save_end, save_spec_to_wv
-from constants import *
-from dataset_processing import load_dsparts
-from architecture_v2 import load, build, extract_image, assemble_image
-from losses import get_target_avg
+from tools.losses import L_d, L_s_margin, L_s, L_travel, L_g, L_g_id, L_g_freqprio, L_g_parallel_comparison
+from testing_network import save_end
+from MAINCONFIG import *
+from tools.dataset_processing import load_dsparts
+from tools.architecture_v2 import load, build, extract_image, assemble_image
+from tools.losses import get_target_avg
 
 # Preparation of logfile and savepath
 
@@ -328,7 +325,6 @@ def save_spec_img(x, title, filename='Testfig.png'):
     axs.axis('off')
     axs.set_title(title)
     fig.savefig(filename)
-
 
 if __name__ == "__main__":
     dsval = load_dsparts("dsvalQuick")

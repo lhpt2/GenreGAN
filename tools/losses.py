@@ -4,7 +4,7 @@ used for training the networks
 """
 import tensorflow as tf
 import tensorflow_probability as tfp
-from constants import GL_DELTA
+from MAINCONFIG import GL_DELTA
 
 
 #### discriminator loss

@@ -8,7 +8,7 @@ import os
 
 import soundfile
 
-from dataset_processing import db_spec_to_wave
+from tools.dataset_processing import db_spec_to_wave
 
 if len(sys.argv) < 3:
     raise Exception("Give filename and samplerate as arguments")

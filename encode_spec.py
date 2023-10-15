@@ -3,13 +3,10 @@ Create spectrogram data as .npy file
 from wave audio file
 """
 import sys
-import numpy
 import os
 import numpy as np
 
-import soundfile
-
-from dataset_processing import db_spec_to_wave, wave_to_db_spec, load_single_audio
+from tools.dataset_processing import wave_to_db_spec, load_single_audio
 
 if len(sys.argv) < 3:
     raise Exception("Give filename and samplerate as arguments")

@@ -9,9 +9,9 @@ import tensorflow as tf
 
 from keras.optimizers import Adam
 
-from architecture_v2 import build, load
-from constants import GL_SR, GL_SHAPE, log, secs_to_bins
-from dataset_processing import db_spec_to_wave
+from tools.architecture_v2 import build, load
+from MAINCONFIG import GL_SR, GL_SHAPE, log
+from tools.dataset_processing import db_spec_to_wave
 
 def get_networks(shape, load_model=False, path=None):
    if not load_model:
@@ -187,7 +187,6 @@ def chopspec(spec):
    dsa.append(imlast)
    return np.array(dsa, dtype=np.float32)
 
-from pathlib import Path
 
 if __name__ == '__main__':
    #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'

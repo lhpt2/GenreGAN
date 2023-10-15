@@ -14,7 +14,7 @@ import soundfile as sf
 import torch
 import torch.nn as nn
 
-from constants import *
+from MAINCONFIG import *
 
 specobj = Spectrogram(n_fft=6 * GL_HOP, win_length=6 * GL_HOP, hop_length=GL_HOP, pad=0, power=2, normalized=True)
 specfunc = specobj.forward
@@ -124,6 +124,10 @@ def load_spec_array_splitseconds(o_path, min=0, max=0, sec: int = 5):
     rlist = np.array(rlist)
     print("finished")
     return ids, olist, rlist
+
+def load_wv_array_splitseconds_joined():
+    pass
+
 def load_spec_array_splitseconds_joined(o_path, min=0, max=0, sec: int = 5):
     listing_orig = glob(f'{o_path}/*.npy')
     r_path = o_path.replace('_o', '_r')
@@ -181,6 +185,8 @@ def load_single_splitsecond(o_file, secs: int = 5):
     id, orig, remix = split_xsec_size(int(id), orig, remix, secs)
 
     return id, orig, remix
+
+# split arrays of data into slices of either bins fft-bins or secs (default: secs = 5) if bins is 0
 def split_xsec_size(id: int, orig: np.ndarray, remix: np.ndarray, secs: int = 5, bins: int = 0):
     # shorten to shorter sample
     if bins != 0:
@@ -210,17 +216,23 @@ def split_xsec_size(id: int, orig: np.ndarray, remix: np.ndarray, secs: int = 5,
 
     return np.array(ids), np.array(olist), np.array(rlist)
 
+# construct a dataset from arrays and save to path
 def construct_save_ds(ids, origs, remixes, path):
     ds = tf.data.Dataset.from_tensor_slices((ids, origs, remixes))
     print(f"Dataset constructed, saving now...")
     ds.save(path)
     print(f"Data saved to {path}")
+
+#
 def save_npys_to_Dataset(origpath, savepath, min=0, max=0):
     ids, train_o, train_r = load_spec_array_splitseconds(origpath, min=min, max=max)
     print("IDs", ids.shape)
     print("Set Orig", train_o.shape[0], train_o[0].shape[0], train_o[1].shape[0])
     print("Set Remix", train_r.shape[0], train_r[0].shape[0], train_r[1].shape[0])
     construct_save_ds(ids, train_o, train_r, savepath)
+
+
+# load saved datasets that may be saved in parts
 def load_dsparts(name: str):
     ds_names = glob(f"./{name}_part*")
 

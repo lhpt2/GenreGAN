@@ -10,7 +10,7 @@ import tensorflow as tf
 from keras.layers import Input, ZeroPadding2D, Dense, Reshape, Flatten, Concatenate, Conv2D, Conv2DTranspose, GlobalAveragePooling2D, UpSampling2D, LeakyReLU, ReLU, Add, Multiply, Lambda, Dot, BatchNormalization, Activation, ZeroPadding2D, Cropping2D, Cropping1D
 from keras.models import Model
 
-from constants import *
+from MAINCONFIG import *
 from specnorm import ConvSN2D, ConvSN2DTranspose, DenseSN
 
 init = tf.keras.initializers.he_uniform()
