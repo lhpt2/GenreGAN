@@ -332,13 +332,3 @@ def load_dsparts(name: str):
 
     print(f"Dataset {name} loaded from {len(ds_names)} parts")
     return ds
-
-def main():
-    ids, olist, rlist = load_wv_array_splitseconds_checked("dsSimple_train_o")
-    construct_save_ds(ids, olist, rlist, "dsSimple_train")
-    ids, val_o, val_r = load_wv_array_splitseconds_checked("dsSimple_val_o")
-    construct_save_ds(ids, val_o, val_r, "dsSimple_val")
-    exit(0)
-
-if __name__ == "__main__":
-    main()
