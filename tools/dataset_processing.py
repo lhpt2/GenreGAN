@@ -130,8 +130,18 @@ def load_spec_array_splitseconds(o_path, min=0, max=0, sec: int = 5):
     return ids, olist, rlist
 
 def load_wv_array_splitseconds_checked(o_path, min=0, max=0):
+
+    if not os.path.exists(f'{o_path}_o'):
+        print(f'{o_path}_o does not exist')
+        exit(1)
+
+    if not os.path.exists(f'{o_path}_r'):
+        print(f'{o_path}_r does not exist')
+        exit(1)
+
     listing_orig = glob(f'{o_path}_o/*.wav')
     r_path = f'{o_path}_r'
+    print(r_path)
 
     ids = []
     olist = []
@@ -304,7 +314,6 @@ def construct_save_ds(ids, origs, remixes, path):
     ds.save(path)
     print(f"Data saved to {path}")
 
-#
 def save_npys_to_Dataset(origpath, savepath, min=0, max=0):
     ids, train_o, train_r = load_spec_array_splitseconds(origpath, min=min, max=max)
     print("IDs", ids.shape)
