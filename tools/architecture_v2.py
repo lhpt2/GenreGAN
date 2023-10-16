@@ -11,7 +11,7 @@ from keras.layers import Input, ZeroPadding2D, Dense, Reshape, Flatten, Concaten
 from keras.models import Model
 
 from MAINCONFIG import *
-from specnorm import ConvSN2D, ConvSN2DTranspose, DenseSN
+from tools.specnorm import ConvSN2D, ConvSN2DTranspose, DenseSN
 
 init = tf.keras.initializers.he_uniform()
 
