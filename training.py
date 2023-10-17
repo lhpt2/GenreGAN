@@ -342,7 +342,7 @@ if __name__ == "__main__":
     #dstrain = dstrain.batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # do things: get networks with proper size (shape should be changed)
-    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=True, path='../Ergebnisse/Versuch08_LossPaper_3.1_1.0_5.0_10.0_0.7_4.0_0.0/2023-09-07-01-35_126')
+    gl_gen, gl_discr, gl_siam, [gl_opt_gen, gl_opt_disc, gl_opt_siam] = get_networks(GL_SHAPE, load_model=False, path='../Ergebnisse/Versuch08_LossPaper_3.1_1.0_5.0_10.0_0.7_4.0_0.0/2023-09-07-01-35_126')
 
     log(getconstants())
 
