@@ -39,8 +39,8 @@ GL_GAMMA = 5.
 # delta -> distance of vectors in margin (siamese) loss
 GL_DELTA = 0.7            #constant for siamese loss
 
-GL_EXP_NR = 10
-GL_VERSION = '3.1'
+GL_EXP_NR = 11
+GL_VERSION = '3.2'
 
 GL_SAVE = f'../Ergebnisse/Versuch{GL_EXP_NR:02d}_LossPaper_{GL_VERSION}_{GL_ALPHA}_{GL_BETA}_{GL_GAMMA}_{GL_DELTA}_{GL_EPSILON}_{GL_ZETA}'
 
