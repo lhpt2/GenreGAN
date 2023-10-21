@@ -327,15 +327,25 @@ def save_spec_img(x, title, filename='Testfig.png'):
     fig.savefig(filename)
 
 if __name__ == "__main__":
-    dsval = load_dsparts("dsvalQuick")
-    dstrain = load_dsparts('dstrainQuick')
+    #dsval = load_dsparts("dsvalQuick")
+    #dstrain = load_dsparts('dstrainQuick')
+    dsval = load_dsparts("dsSimple_val")
+    dstrain = load_dsparts('dsSimple_train')
 
     # calculating average distribution for frequency priorisation loss
     GL_TRGT_AVG_DIST = get_target_avg(dstrain)
 
+    #print dataset lengths
+    print("Validation dataset len:",len(dsval))
+    print("Train dataset len:",len(dstrain))
+
     # TRAINING SETUP
     dsval = dsval.repeat().shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
+
+    # print number of batches
+    print("Validation dataset len:",len(dsval))
+    print("Train dataset len:",len(dstrain))
 
     # DEBUGGING SETUP
     #dsval = dsval.repeat(500).prefetch(AUTOTUNE)
@@ -347,4 +357,4 @@ if __name__ == "__main__":
     log(getconstants())
 
     # start training
-    train(dstrain, dsval, 500, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5)
+    train(dstrain, dsval, GL_EPOCHS, batch_size=GL_BS, lr=0.001, n_save=6, gen_update=5)

@@ -27,10 +27,10 @@ GL_ALPHA = 1.
 GL_BETA = 5.
 
 # epsilon -> frequency priorisation
-GL_EPSILON = 0.
+GL_EPSILON = 8.
 
 # zeta -> parallel loss
-GL_ZETA = 8.
+GL_ZETA = 0.
 
 
 # gamma -> margin loss factor
@@ -38,6 +38,8 @@ GL_GAMMA = 5.
 
 # delta -> distance of vectors in margin (siamese) loss
 GL_DELTA = 0.7            #constant for siamese loss
+
+GL_EPOCHS = 200
 
 GL_EXP_NR = 11
 GL_VERSION = '3.2'
