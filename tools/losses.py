@@ -35,11 +35,11 @@ def L_g_id(alpha: float, trgt, g_trgt):
 ### loss forcing network to match a frequency distribution
 def L_g_freqprio(g_src, freqmask_spec):
     #freqmask_spec already reduced mean
-    norm_freqmask, _ = tf.linalg.normalize(freqmask_spec, ord=1)
-    norm_freqmask = tf.expand_dims(norm_freqmask, 0)
-    norm_freqmask = tf.repeat(norm_freqmask, g_src.shape[0], 0)
-    norm_g_src, _ = tf.linalg.normalize(g_src, ord=1)
-    return tf.reduce_sum(tf.abs(norm_freqmask - norm_g_src))
+    g_src_edit, _ = tf.linalg.normalize(g_src, ord=1, axis=1)
+    g_src_edit = tf.reduce_mean(g_src_edit, axis=2)
+    freqmask_spec = tf.expand_dims(freqmask_spec, 0)
+    freqmask_spec = tf.repeat(freqmask_spec, g_src.shape[0], 0)
+    return tf.reduce_sum(tf.abs(freqmask_spec - g_src_edit))
 
 #### siamese loss
 def L_s(l_travel, l_s_margin):
@@ -67,14 +67,15 @@ Get average frequency distribution of target dataset (not normalized)
 def get_target_avg(dstrain: tf.data.Dataset):
     result = None
     for _, _, spec in dstrain.take(1):
-        result = tf.zeros_like(spec)
+        result = tf.zeros(spec.shape[0], dtype=spec.dtype)
+        trgt_norm = tf.zeros(spec.shape[0], dtype=spec.dtype)
 
-    count = 0
     for _, _, target in dstrain:
-        result += tf.reduce_mean(target, axis=0)
-        count += 1
+        trgt_norm, _ = tf.linalg.normalize(target, ord=1, axis=0)
+        result += tf.reduce_mean(trgt_norm, axis=1)
 
-    return result / count
+
+    return result / len(dstrain)
 
 
 def map_handle_nan(x):

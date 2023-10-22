@@ -99,7 +99,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
         # calculate gloss
         l_id = L_g_id(GL_ALPHA, train_trgt, gen_trgt)
-        loss_g = L_g(d_gen_src, l_travel, l_id) + GL_EPSILON * L_g_freqprio(gen_src, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(gen_src, train_trgt, train_src)
+        loss_g = L_g(d_gen_src, l_travel, l_id) + GL_EPSILON * L_g_freqprio(gen_src, GL_TRGT_AVG_DISTR) + GL_ZETA * L_g_parallel_comparison(gen_src, train_trgt, train_src)
 
     grad_gen = tape_gen.gradient(loss_g, gl_gen.trainable_variables + gl_siam.trainable_variables)
     gl_opt_gen.apply_gradients(zip(grad_gen, gl_gen.trainable_variables + gl_siam.trainable_variables))
@@ -132,7 +132,7 @@ def train_all(train_src, train_trgt, val_src, val_trgt):
 
     l_travel_val = L_travel(GL_BETA, siam_vals1, siam_vals3, siam_gen_vals1, siam_gen_vals3)
     l_id_val = L_g_id(GL_ALPHA, val_trgt, gen_valr)
-    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val) + GL_EPSILON * L_g_freqprio(gen_vals, GL_TRGT_AVG_DIST) + GL_ZETA * L_g_parallel_comparison(val_src, gen_vals, val_trgt)
+    loss_g_val = L_g(d_gen_vals, l_travel_val, l_id_val) + GL_EPSILON * L_g_freqprio(gen_vals, GL_TRGT_AVG_DISTR) + GL_ZETA * L_g_parallel_comparison(val_src, gen_vals, val_trgt)
 
     return loss_g, loss_d, loss_df, loss_dr, loss_s, l_id, loss_g_val
 
@@ -333,7 +333,7 @@ if __name__ == "__main__":
     dstrain = load_dsparts('dsSimple_train')
 
     # calculating average distribution for frequency priorisation loss
-    GL_TRGT_AVG_DIST = get_target_avg(dstrain)
+    GL_TRGT_AVG_DISTR = get_target_avg(dstrain)
 
     #print dataset lengths
     print("Validation dataset len:",len(dsval))
@@ -344,7 +344,6 @@ if __name__ == "__main__":
     dstrain = dstrain.shuffle(10000).batch(GL_BS, drop_remainder=True).prefetch(AUTOTUNE)
 
     # print number of batches
-    print("Validation dataset len:",len(dsval))
     print("Train dataset len:",len(dstrain))
 
     # DEBUGGING SETUP
