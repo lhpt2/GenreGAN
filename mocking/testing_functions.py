@@ -5,7 +5,7 @@ errors in the code
 import random
 import numpy as np
 
-from constants import log
+from MAINCONFIG import log
 from training import make_losses_string, make_csv_string
 
 def dummy_losses_d():
