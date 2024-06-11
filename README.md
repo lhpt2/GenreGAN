@@ -8,7 +8,10 @@ The main dependencies are:
 
 - ``tensorflow`` - main library
 - ``torch`` - for some audio/spectrogram related stuff that did not work properly with tensorflow
+- ``librosa``- for conversion to spectrogram data
 - ``soundfile`` - for reading and writing soundfiles
+
+There is a ``requirements.txt`` provided in the root directory of the project.
 
 # SHORT Summary
 
