@@ -1,4 +1,4 @@
-keras==3.3.3
+keras==3.9.0
 librosa==0.10.2.post1
 matplotlib==3.8.3
 numpy==1.26.4
